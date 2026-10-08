@@ -1,0 +1,49 @@
+<!-- Merge these entries into the app target Info.plist. -->
+<key>NSCameraUsageDescription</key>
+<string>DIVISA SHOPPER usa la cámara del iPhone como respaldo durante la compra asistida.</string>
+<key>NSMicrophoneUsageDescription</key>
+<string>DIVISA SHOPPER usa el micrófono para la conversación privada con el cliente y, cuando corresponda, para grabar audio.</string>
+<key>NSBluetoothAlwaysUsageDescription</key>
+<string>DIVISA SHOPPER necesita Bluetooth para conectarse a las Ray-Ban Meta.</string>
+<key>NSLocalNetworkUsageDescription</key>
+<string>DIVISA SHOPPER usa la red local para comunicarse con las Ray-Ban Meta.</string>
+<key>NSBonjourServices</key>
+<array>
+    <string>_bonjour._tcp</string>
+</array>
+<key>UIBackgroundModes</key>
+<array>
+    <string>processing</string>
+    <string>bluetooth-central</string>
+    <string>bluetooth-peripheral</string>
+    <string>external-accessory</string>
+    <string>audio</string>
+</array>
+<key>UISupportedExternalAccessoryProtocols</key>
+<array>
+    <string>com.meta.ar.wearable</string>
+</array>
+<key>CFBundleURLTypes</key>
+<array>
+    <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLName</key>
+        <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>divisashopper</string>
+        </array>
+    </dict>
+</array>
+<key>MWDAT</key>
+<dict>
+    <key>AppLinkURLScheme</key>
+    <string>divisashopper://</string>
+    <key>MetaAppID</key>
+    <string>$(META_APP_ID)</string>
+    <key>ClientToken</key>
+    <string>$(CLIENT_TOKEN)</string>
+    <key>TeamID</key>
+    <string>$(DEVELOPMENT_TEAM)</string>
+</dict>
