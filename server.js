@@ -1,6 +1,6 @@
 const express = require("express");
 const cors = require("cors");
-const { AccessToken } = require("@livekit/server-sdk");
+const { AccessToken } = require("livekit-server-sdk");
 
 const app = express();
 app.use(cors());
