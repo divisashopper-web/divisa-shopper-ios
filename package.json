@@ -1,0 +1,17 @@
+{
+  "name": "divisa-shopper-call-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@livekit/server-sdk": "^2.9.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
