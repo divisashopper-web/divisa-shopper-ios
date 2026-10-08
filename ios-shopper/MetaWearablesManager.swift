@@ -12,7 +12,7 @@ final class MetaWearablesManager: ObservableObject {
     private let wearables = Wearables.shared
     private var deviceSession: DeviceSession?
     private var camera: Camera?
-    private var stream: Stream?
+    private var stream: MWDATCamera.Stream?
     private let listenerTokens = ListenerTokenBag()
 
     func registerGlasses() async {
