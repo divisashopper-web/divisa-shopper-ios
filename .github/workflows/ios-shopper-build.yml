@@ -1,0 +1,32 @@
+name: iOS Shopper Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ios-shopper/**"
+      - ".github/workflows/ios-shopper-build.yml"
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios-shopper
+        run: xcodegen generate
+
+      - name: Resolve Swift packages
+        working-directory: ios-shopper
+        run: xcodebuild -resolvePackageDependencies -project DIVISAShopper.xcodeproj -scheme DIVISAShopper
+
+      - name: Build for iOS Simulator
+        working-directory: ios-shopper
+        run: |
+          xcodebuild             -project DIVISAShopper.xcodeproj             -scheme DIVISAShopper             -sdk iphonesimulator             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
