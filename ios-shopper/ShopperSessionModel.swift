@@ -140,7 +140,7 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func startSession() {
-        guard connectionState != .connecting && connectionState != .connected && !isEndingSession else { return }
+        guard connectionState != .connecting && connectionState != .connected && !isEndingSession && !isSwitchingCamera else { return }
 
         // Cada compra comienza con estado limpio; no arrastrar avisos o respaldo de la sesión anterior.
         recordingSaveError = nil
@@ -187,7 +187,10 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func endSession() {
-        guard !isEndingSession else { return }
+        guard !isEndingSession && !isSwitchingCamera else {
+            if isSwitchingCamera { statusMessage = "Espera a que termine el cambio de cámara" }
+            return
+        }
         isEndingSession = true
         statusMessage = isRecording ? "Guardando grabación antes de cerrar…" : "Finalizando sesión…"
         Task {
