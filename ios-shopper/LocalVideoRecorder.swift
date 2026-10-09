@@ -96,12 +96,12 @@ final class LocalVideoRecorder: ObservableObject {
 
         let pts = CMTime(seconds: Date().timeIntervalSince(wallClock), preferredTimescale: 44_100)
         var timing = CMSampleTimingInfo(
-            duration: CMTime(value: CMTime(buffer.frameLength), timescale: CMTimeScale(buffer.format.sampleRate)),
+            duration: CMTime(value: CMTimeValue(buffer.frameLength), timescale: CMTimeScale(buffer.format.sampleRate)),
             presentationTimeStamp: pts,
             decodeTimeStamp: .invalid
         )
         var sampleBuffer: CMSampleBuffer?
-        guard let asbd = buffer.format.streamDescription else { return }
+        let asbd = buffer.format.streamDescription
         var formatDescription: CMAudioFormatDescription?
         guard CMAudioFormatDescriptionCreate(
             allocator: kCFAllocatorDefault,
