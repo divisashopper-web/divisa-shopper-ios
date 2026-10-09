@@ -37,6 +37,8 @@ targets:
         NSMicrophoneUsageDescription: DIVISA SHOPPER usa el micrófono para conversar con el cliente.
         NSBluetoothAlwaysUsageDescription: DIVISA SHOPPER usa Bluetooth para conectarse a las Ray-Ban Meta.
         NSLocalNetworkUsageDescription: DIVISA SHOPPER usa la red local para comunicarse con dispositivos compatibles.
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
     dependencies:
       - package: LiveKit
         product: LiveKit
