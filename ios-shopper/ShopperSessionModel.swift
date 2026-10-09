@@ -19,6 +19,7 @@ final class ShopperSessionModel: ObservableObject {
     @Published var recordingElapsedSeconds = 0
     @Published var isUsingBackupCamera = false
     @Published var preferredCamera: CameraSource = .iPhoneBack
+    @Published var isEndingSession = false
 
     private var recordingTimer: Timer?
 
@@ -160,6 +161,9 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func endSession() {
+        guard !isEndingSession else { return }
+        isEndingSession = true
+        statusMessage = isRecording ? "Guardando grabación antes de cerrar…" : "Finalizando sesión…"
         Task {
             if isRecording {
                 await localRecorder.stop()
@@ -172,6 +176,7 @@ final class ShopperSessionModel: ObservableObject {
             clientVideoAvailable = false
             isUsingBackupCamera = false
             statusMessage = "Sesión finalizada"
+            isEndingSession = false
         }
     }
 
