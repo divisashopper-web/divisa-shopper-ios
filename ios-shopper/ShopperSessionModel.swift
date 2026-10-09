@@ -18,6 +18,7 @@ final class ShopperSessionModel: ObservableObject {
     @Published var statusMessage = "Preparada para iniciar sesión"
     @Published var recordingElapsedSeconds = 0
     @Published var isUsingBackupCamera = false
+    @Published var preferredCamera: CameraSource = .iPhoneBack
 
     private var recordingTimer: Timer?
 
@@ -62,6 +63,7 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func selectCamera(_ source: CameraSource) {
+        preferredCamera = source
         selectedCamera = source
         isUsingBackupCamera = false
 
@@ -100,6 +102,28 @@ final class ShopperSessionModel: ObservableObject {
                 }
             } catch {
                 statusMessage = "No se pudo cambiar la cámara: \(error.localizedDescription)"
+            }
+        }
+    }
+
+    func retryPreferredCamera() {
+        guard connectionState == .connected, preferredCamera == .rayBanMeta, isUsingBackupCamera else { return }
+        statusMessage = "Buscando Ray-Ban Meta…"
+        Task {
+            do {
+                try await liveKit.useRayBanVideo()
+                await metaWearables.startRayBanPreview()
+                guard metaWearables.isStreaming else {
+                    await liveKit.stopRayBanVideo()
+                    statusMessage = "Ray-Ban aún no disponible · continúa iPhone trasera"
+                    return
+                }
+                await liveKit.stopIPhoneCamera()
+                selectedCamera = .rayBanMeta
+                isUsingBackupCamera = false
+                statusMessage = isRecording ? "Grabando · Ray-Ban Meta recuperada" : "Ray-Ban Meta recuperada"
+            } catch {
+                statusMessage = "Ray-Ban aún no disponible · continúa respaldo iPhone"
             }
         }
     }
