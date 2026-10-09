@@ -136,11 +136,13 @@ struct ShopperSessionView: View {
                 session.toggleMute()
             }
             .buttonStyle(.bordered)
+            .disabled(session.connectionState != .connected || session.isEndingSession)
 
             Button(session.isRecording ? "Detener grabación" : "Grabar") {
                 session.toggleRecording()
             }
             .buttonStyle(.bordered)
+            .disabled(session.connectionState != .connected || session.isEndingSession)
 
             Button(session.connectionState == .connected ? "Finalizar sesión" : "Iniciar sesión") {
                 if session.connectionState == .connected {
@@ -150,7 +152,7 @@ struct ShopperSessionView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting)
+            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession)
             .confirmationDialog(
                 "¿Finalizar la sesión de compra?",
                 isPresented: $showEndSessionConfirmation,
