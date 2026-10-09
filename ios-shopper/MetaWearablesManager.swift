@@ -57,17 +57,14 @@ final class MetaWearablesManager: ObservableObject {
             let stream = camera.stream
             self.stream = stream
 
-            listenerTokens.add(
-                stream.videoFramePublisher.listen { [weak self] frame in
+            stream.videoFramePublisher.listen { [weak self] frame in
                     guard let image = frame.makeUIImage() else { return }
                     Task { @MainActor in
                         self?.previewImage = image
                     }
-                }
-            )
+                }.store(in: listenerTokens)
 
-            listenerTokens.add(
-                stream.statePublisher.listen { [weak self] state in
+            stream.statePublisher.listen { [weak self] state in
                     Task { @MainActor in
                         self?.isStreaming = state == .streaming
                         self?.status = state == .streaming
@@ -75,7 +72,7 @@ final class MetaWearablesManager: ObservableObject {
                             : "Ray-Ban: \(state)"
                     }
                 }
-            )
+            .store(in: listenerTokens)
 
             stream.start()
         } catch {
