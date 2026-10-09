@@ -10,6 +10,7 @@ struct ShopperSessionView: View {
                 clientStage
                 sourcePicker
                 backupCameraIndicator
+                rayBanRecoveryControl
                 recordingIndicator
                 controls
                 recordingResult
@@ -80,6 +81,19 @@ struct ShopperSessionView: View {
             .font(.subheadline)
             .padding(10)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    @ViewBuilder
+    private var rayBanRecoveryControl: some View {
+        if session.isUsingBackupCamera && session.preferredCamera == .rayBanMeta {
+            Button {
+                session.retryPreferredCamera()
+            } label: {
+                Label("Volver a intentar Ray-Ban", systemImage: "eyeglasses")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 
