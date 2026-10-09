@@ -247,6 +247,7 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func toggleRecording() {
+        guard connectionState == .connected, !isEndingSession, !isSwitchingCamera else { return }
         if isRecording {
             Task {
                 await localRecorder.stop()
@@ -260,6 +261,7 @@ final class ShopperSessionModel: ObservableObject {
                 }
             }
         } else {
+            recordingSaveError = nil
             localRecorder.start()
             isRecording = true
             startRecordingTimer()
