@@ -17,6 +17,7 @@ final class ShopperSessionModel: ObservableObject {
     @Published var clientVideoAvailable = false
     @Published var statusMessage = "Preparada para iniciar sesión"
     @Published var recordingElapsedSeconds = 0
+    @Published var isUsingBackupCamera = false
 
     private var recordingTimer: Timer?
 
@@ -50,6 +51,7 @@ final class ShopperSessionModel: ObservableObject {
                 try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
                 await liveKit.stopRayBanVideo()
                 selectedCamera = .iPhoneBack
+                isUsingBackupCamera = true
                 statusMessage = isRecording
                     ? "Grabando · respaldo iPhone trasera activo"
                     : "Respaldo iPhone trasera activo"
@@ -61,6 +63,7 @@ final class ShopperSessionModel: ObservableObject {
 
     func selectCamera(_ source: CameraSource) {
         selectedCamera = source
+        isUsingBackupCamera = false
 
         guard connectionState == .connected else {
             statusMessage = "Fuente preparada: \(source.rawValue)"
@@ -143,6 +146,7 @@ final class ShopperSessionModel: ObservableObject {
             await liveKit.disconnect()
             connectionState = .idle
             clientVideoAvailable = false
+            isUsingBackupCamera = false
             statusMessage = "Sesión finalizada"
         }
     }
