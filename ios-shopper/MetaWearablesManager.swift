@@ -20,6 +20,7 @@ final class MetaWearablesManager: ObservableObject {
     /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
     var onPixelBuffer: ((CVPixelBuffer) -> Void)?
     var onVideoSampleBuffer: ((CMSampleBuffer) -> Void)?
+    var onStreamingChanged: ((Bool) -> Void)?
 
     func registerGlasses() async {
         do {
@@ -75,8 +76,10 @@ final class MetaWearablesManager: ObservableObject {
 
             stream.statePublisher.listen { [weak self] state in
                     Task { @MainActor in
-                        self?.isStreaming = state == .streaming
-                        self?.status = state == .streaming
+                        let streaming = state == .streaming
+                        self?.isStreaming = streaming
+                        self?.onStreamingChanged?(streaming)
+                        self?.status = streaming
                             ? "Ray-Ban transmitiendo"
                             : "Ray-Ban: \(state)"
                     }
