@@ -22,8 +22,26 @@ final class ShopperSessionModel: ObservableObject {
 
     func selectCamera(_ source: CameraSource) {
         selectedCamera = source
-        statusMessage = "Fuente: \(source.rawValue)"
-        // La sala LiveKit permanece activa cuando cambiemos la fuente de video.
+
+        guard connectionState == .connected else {
+            statusMessage = "Fuente preparada: \(source.rawValue)"
+            return
+        }
+
+        Task {
+            do {
+                switch source {
+                case .iPhoneBack, .iPhoneFront:
+                    try await liveKit.useIPhoneCamera(source)
+                    statusMessage = "Transmitiendo: \(source.rawValue)"
+                case .rayBanMeta:
+                    await liveKit.stopIPhoneCamera()
+                    statusMessage = "Sala activa. Preparando Ray-Ban Meta…"
+                }
+            } catch {
+                statusMessage = "No se pudo cambiar la cámara: \(error.localizedDescription)"
+            }
+        }
     }
 
     func startSession() {
@@ -40,8 +58,14 @@ final class ShopperSessionModel: ObservableObject {
                     displayName: "DIVISA SHOPPER"
                 )
                 connectionState = .connected
-                statusMessage = "Sesión privada conectada"
                 isMuted = false
+
+                if selectedCamera == .iPhoneBack || selectedCamera == .iPhoneFront {
+                    try await liveKit.useIPhoneCamera(selectedCamera)
+                    statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
+                } else {
+                    statusMessage = "Sesión conectada · preparando Ray-Ban Meta"
+                }
             } catch {
                 connectionState = .disconnected
                 statusMessage = "No se pudo conectar: \(error.localizedDescription)"
