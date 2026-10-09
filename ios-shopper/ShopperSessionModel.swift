@@ -49,8 +49,11 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     private func fallbackToIPhoneCamera() {
+        guard !isSwitchingCamera && !isEndingSession else { return }
+        isSwitchingCamera = true
         statusMessage = "Ray-Ban desconectada · activando iPhone trasera…"
         Task {
+            defer { isSwitchingCamera = false }
             do {
                 try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
                 await liveKit.stopRayBanVideo()
