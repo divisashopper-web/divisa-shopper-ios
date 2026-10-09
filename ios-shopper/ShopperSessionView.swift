@@ -27,6 +27,12 @@ struct ShopperSessionView: View {
                 .font(.caption.weight(.semibold))
             Text(session.connectionState.rawValue)
                 .font(.subheadline)
+            NavigationLink {
+                RecordingsLibraryView(recorder: session.localRecorder)
+            } label: {
+                Label("Grabaciones", systemImage: "video.badge.checkmark")
+                    .font(.caption.weight(.semibold))
+            }
         }
     }
 
