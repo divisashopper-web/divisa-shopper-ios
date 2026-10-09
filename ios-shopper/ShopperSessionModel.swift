@@ -16,6 +16,9 @@ final class ShopperSessionModel: ObservableObject {
     @Published var isRecording = false
     @Published var clientVideoAvailable = false
     @Published var statusMessage = "Preparada para iniciar sesión"
+    @Published var recordingElapsedSeconds = 0
+
+    private var recordingTimer: Timer?
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
     let liveKit = LiveKitSessionManager()
@@ -113,6 +116,7 @@ final class ShopperSessionModel: ObservableObject {
             if isRecording {
                 await localRecorder.stop()
                 isRecording = false
+                stopRecordingTimer()
             }
             metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
@@ -136,16 +140,38 @@ final class ShopperSessionModel: ObservableObject {
         }
     }
 
+    var recordingTimeText: String {
+        let hours = recordingElapsedSeconds / 3600
+        let minutes = (recordingElapsedSeconds % 3600) / 60
+        let seconds = recordingElapsedSeconds % 60
+        return String(format: "%02d:%02d:%02d", hours, minutes, seconds)
+    }
+
+    private func startRecordingTimer() {
+        recordingElapsedSeconds = 0
+        recordingTimer?.invalidate()
+        recordingTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.recordingElapsedSeconds += 1 }
+        }
+    }
+
+    private func stopRecordingTimer() {
+        recordingTimer?.invalidate()
+        recordingTimer = nil
+    }
+
     func toggleRecording() {
         if isRecording {
             Task {
                 await localRecorder.stop()
                 isRecording = false
+                stopRecordingTimer()
                 statusMessage = "Grabación local detenida"
             }
         } else {
             localRecorder.start()
             isRecording = true
+            startRecordingTimer()
             statusMessage = "Grabando localmente · \(selectedCamera.rawValue)"
         }
     }
