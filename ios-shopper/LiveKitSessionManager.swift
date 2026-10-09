@@ -18,8 +18,7 @@ final class LiveKitSessionManager: ObservableObject {
         Task { @MainActor in self?.applyRoomState(state) }
     }
 
-    override init() {
-        super.init()
+    init() {
         room.add(delegate: roomObserver)
     }
 
