@@ -10,9 +10,8 @@ final class MetaToLiveKitBridge: ObservableObject {
     private(set) var track: LocalVideoTrack?
 
     func prepareTrack() -> LocalVideoTrack {
-        let capturer = BufferCapturer()
-        self.capturer = capturer
-        let track = LocalVideoTrack.createTrack(name: "rayban-meta", capturer: capturer)
+        let track = LocalVideoTrack.createBufferTrack(name: "rayban-meta", source: .camera)
+        self.capturer = track.capturer as? BufferCapturer
         self.track = track
         return track
     }
