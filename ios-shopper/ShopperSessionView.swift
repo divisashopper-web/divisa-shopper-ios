@@ -167,13 +167,13 @@ struct ShopperSessionView: View {
                 session.toggleMute()
             }
             .buttonStyle(.bordered)
-            .disabled(session.connectionState != .connected || session.isEndingSession)
+            .disabled(session.connectionState != .connected || session.isEndingSession || session.isSwitchingCamera)
 
             Button(session.isRecording ? "Detener grabación" : "Grabar") {
                 session.toggleRecording()
             }
             .buttonStyle(.bordered)
-            .disabled(session.connectionState != .connected || session.isEndingSession)
+            .disabled(session.connectionState != .connected || session.isEndingSession || session.isSwitchingCamera)
 
             Button(session.connectionState == .connected ? "Finalizar sesión" : "Iniciar sesión") {
                 if session.connectionState == .connected {
