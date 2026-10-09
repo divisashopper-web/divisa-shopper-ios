@@ -140,7 +140,13 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func startSession() {
-        guard connectionState != .connecting && connectionState != .connected else { return }
+        guard connectionState != .connecting && connectionState != .connected && !isEndingSession else { return }
+
+        // Cada compra comienza con estado limpio; no arrastrar avisos o respaldo de la sesión anterior.
+        recordingSaveError = nil
+        isUsingBackupCamera = false
+        isSwitchingCamera = false
+        recordingElapsedSeconds = 0
 
         connectionState = .connecting
         statusMessage = "Solicitando acceso a la sesión…"
