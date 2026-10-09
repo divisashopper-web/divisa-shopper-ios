@@ -25,6 +25,14 @@ struct ShopperSessionView: View {
             }
             .padding()
             .navigationBarTitleDisplayMode(.inline)
+            .alert("Revisar grabación", isPresented: Binding(
+                get: { session.recordingSaveError != nil },
+                set: { if !$0 { session.recordingSaveError = nil } }
+            )) {
+                Button("Entendido") { session.recordingSaveError = nil }
+            } message: {
+                Text(session.recordingSaveError ?? "")
+            }
         }
     }
 
