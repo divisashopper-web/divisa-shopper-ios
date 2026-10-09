@@ -106,11 +106,11 @@ struct ShopperSessionView: View {
                 .aspectRatio(9/16, contentMode: .fit)
             RemoteClientVideoView(room: session.liveKit.room)
                 .clipShape(RoundedRectangle(cornerRadius: 24))
-            if session.connectionState != .connected {
+            if session.connectionState != .connected || !session.clientVideoAvailable {
                 VStack(spacing: 10) {
                     Image(systemName: "person.crop.rectangle")
                         .font(.largeTitle)
-                    Text(session.connectionState == .connecting ? "Conectando con el cliente…" : "Esperando video del cliente")
+                    Text(session.connectionState == .connecting ? "Conectando con el cliente…" : session.connectionState == .connected ? "Cliente conectado · esperando su cámara" : "Esperando video del cliente")
                         .font(.subheadline.weight(.semibold))
                 }
                 .foregroundStyle(.white.opacity(0.85))
