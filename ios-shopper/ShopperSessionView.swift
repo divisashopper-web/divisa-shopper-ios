@@ -9,6 +9,7 @@ struct ShopperSessionView: View {
                 header
                 clientStage
                 sourcePicker
+                recordingIndicator
                 controls
                 recordingResult
                 status
@@ -61,6 +62,26 @@ struct ShopperSessionView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+
+    @ViewBuilder
+    private var recordingIndicator: some View {
+        if session.isRecording {
+            HStack(spacing: 8) {
+                Image(systemName: "record.circle.fill")
+                Text("GRABANDO")
+                    .fontWeight(.bold)
+                Spacer()
+                Text(session.recordingTimeText)
+                    .monospacedDigit()
+                    .fontWeight(.semibold)
+            }
+            .font(.subheadline)
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+            .accessibilityLabel("Grabación activa, \(session.recordingTimeText)")
+        }
     }
 
     private var controls: some View {
