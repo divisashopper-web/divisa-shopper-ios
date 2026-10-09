@@ -86,6 +86,7 @@ struct ShopperSessionView: View {
                 }
             }
             .pickerStyle(.menu)
+            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession)
             .onChange(of: session.selectedCamera) { _, newValue in
                 session.selectCamera(newValue)
             }
@@ -121,6 +122,7 @@ struct ShopperSessionView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
+            .disabled(session.connectionState != .connected || session.isEndingSession)
         }
     }
 
