@@ -16,6 +16,11 @@ struct ShopperSessionView: View {
                 controls
                 recordingResult
                 status
+                if session.isEndingSession {
+                    ProgressView("Guardando y cerrando sesión…")
+                        .font(.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
                 Spacer()
             }
             .padding()
