@@ -128,10 +128,15 @@ struct ShopperSessionView: View {
             }
             .buttonStyle(.bordered)
 
-            Button("Iniciar sesión") {
-                session.startSession()
+            Button(session.connectionState == .connected ? "Finalizar sesión" : "Iniciar sesión") {
+                if session.connectionState == .connected {
+                    session.endSession()
+                } else {
+                    session.startSession()
+                }
             }
             .buttonStyle(.borderedProminent)
+            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting)
         }
         .font(.caption)
     }
