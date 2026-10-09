@@ -47,18 +47,29 @@ final class ShopperSessionModel: ObservableObject {
             do {
                 switch source {
                 case .iPhoneBack, .iPhoneFront:
-                    if liveKit.activeCameraSource == .rayBanMeta {
+                    // Publica primero el iPhone; luego retira Ray-Ban para evitar huecos.
+                    try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
+                    if metaWearables.isStreaming {
                         await liveKit.stopRayBanVideo()
                         metaWearables.stopRayBanPreview()
-                        configureMetaFrameRoutes()
                     }
-                    try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
-                    statusMessage = "Transmitiendo: \(source.rawValue)"
+                    statusMessage = isRecording
+                        ? "Grabando · \(source.rawValue) activa"
+                        : "Transmitiendo: \(source.rawValue)"
                 case .rayBanMeta:
-                    await liveKit.stopIPhoneCamera()
+                    // Arranca primero la nueva fuente y solo después retira el iPhone.
+                    // Así la sala y la grabación permanecen vivas durante la transición.
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    statusMessage = metaWearables.status
+                    guard metaWearables.isStreaming else {
+                        await liveKit.stopRayBanVideo()
+                        statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
+                        return
+                    }
+                    await liveKit.stopIPhoneCamera()
+                    statusMessage = isRecording
+                        ? "Grabando · Ray-Ban Meta activa"
+                        : metaWearables.status
                 }
             } catch {
                 statusMessage = "No se pudo cambiar la cámara: \(error.localizedDescription)"
@@ -99,10 +110,13 @@ final class ShopperSessionModel: ObservableObject {
 
     func endSession() {
         Task {
+            if isRecording {
+                await localRecorder.stop()
+                isRecording = false
+            }
             metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
             connectionState = .idle
-            isRecording = false
             clientVideoAvailable = false
             statusMessage = "Sesión finalizada"
         }
@@ -132,9 +146,7 @@ final class ShopperSessionModel: ObservableObject {
         } else {
             localRecorder.start()
             isRecording = true
-            statusMessage = selectedCamera == .rayBanMeta
-                ? "Grabando localmente desde Ray-Ban Meta"
-                : "Grabación local preparada (iPhone pendiente)"
+            statusMessage = "Grabando localmente · \(selectedCamera.rawValue)"
         }
     }
 }
