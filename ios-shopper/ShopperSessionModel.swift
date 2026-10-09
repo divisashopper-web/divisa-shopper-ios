@@ -113,9 +113,11 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func retryPreferredCamera() {
-        guard connectionState == .connected, preferredCamera == .rayBanMeta, isUsingBackupCamera else { return }
+        guard connectionState == .connected, preferredCamera == .rayBanMeta, isUsingBackupCamera, !isSwitchingCamera, !isEndingSession else { return }
+        isSwitchingCamera = true
         statusMessage = "Buscando Ray-Ban Meta…"
         Task {
+            defer { isSwitchingCamera = false }
             do {
                 try await liveKit.useRayBanVideo()
                 await metaWearables.startRayBanPreview()
