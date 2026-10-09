@@ -9,6 +9,7 @@ struct ShopperSessionView: View {
                 header
                 clientStage
                 sourcePicker
+                backupCameraIndicator
                 recordingIndicator
                 controls
                 recordingResult
@@ -64,6 +65,23 @@ struct ShopperSessionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+
+    @ViewBuilder
+    private var backupCameraIndicator: some View {
+        if session.isUsingBackupCamera {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CÁMARA DE RESPALDO ACTIVA").fontWeight(.bold)
+                    Text("Ray-Ban desconectada · usando iPhone trasera").font(.caption)
+                }
+                Spacer()
+            }
+            .font(.subheadline)
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
 
     @ViewBuilder
     private var recordingIndicator: some View {
