@@ -10,6 +10,7 @@ struct ShopperSessionView: View {
                 clientStage
                 sourcePicker
                 controls
+                recordingResult
                 status
                 Spacer()
             }
@@ -74,6 +75,30 @@ struct ShopperSessionView: View {
             .buttonStyle(.borderedProminent)
         }
         .font(.caption)
+    }
+
+
+    @ViewBuilder
+    private var recordingResult: some View {
+        if let url = session.localRecorder.lastRecordingURL,
+           let name = session.localRecorder.lastRecordingName {
+            HStack {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Última grabación")
+                        .font(.caption.weight(.semibold))
+                    Text(name)
+                        .font(.caption2)
+                        .lineLimit(1)
+                }
+                Spacer()
+                ShareLink(item: url) {
+                    Label("Compartir", systemImage: "square.and.arrow.up")
+                }
+                .font(.caption)
+            }
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
     }
 
     private var status: some View {
