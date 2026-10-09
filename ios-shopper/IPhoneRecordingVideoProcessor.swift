@@ -1,4 +1,5 @@
 import Foundation
+import CoreVideo
 import LiveKit
 
 /// Copia cada fotograma de la cámara del iPhone hacia la grabación local
@@ -15,7 +16,7 @@ final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor {
         if let cv = frame.buffer as? CVPixelVideoBuffer {
             pixelBuffer = cv.pixelBuffer
         } else {
-            pixelBuffer = frame.buffer.toI420()?.toPixelBuffer()
+            pixelBuffer = nil
         }
 
         if let pixelBuffer {
