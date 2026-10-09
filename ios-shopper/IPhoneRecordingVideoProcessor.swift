@@ -4,7 +4,7 @@ import LiveKit
 
 /// Copia cada fotograma de la cámara del iPhone hacia la grabación local
 /// y devuelve el mismo frame intacto para que LiveKit lo siga transmitiendo.
-final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor {
+final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked Sendable {
     weak var recorder: LocalVideoRecorder?
 
     init(recorder: LocalVideoRecorder) {
