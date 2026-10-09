@@ -36,6 +36,27 @@ final class ShopperSessionModel: ObservableObject {
         metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
             self?.localRecorder.append(sampleBuffer)
         }
+        metaWearables.onStreamingChanged = { [weak self] streaming in
+            guard let self, !streaming, self.selectedCamera == .rayBanMeta,
+                  self.connectionState == .connected else { return }
+            self.fallbackToIPhoneCamera()
+        }
+    }
+
+    private func fallbackToIPhoneCamera() {
+        statusMessage = "Ray-Ban desconectada · activando iPhone trasera…"
+        Task {
+            do {
+                try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                await liveKit.stopRayBanVideo()
+                selectedCamera = .iPhoneBack
+                statusMessage = isRecording
+                    ? "Grabando · respaldo iPhone trasera activo"
+                    : "Respaldo iPhone trasera activo"
+            } catch {
+                statusMessage = "Ray-Ban desconectada · error al activar respaldo: \(error.localizedDescription)"
+            }
+        }
     }
 
     func selectCamera(_ source: CameraSource) {
