@@ -70,13 +70,13 @@ final class LocalVideoRecorder: ObservableObject {
             let dimensions = CMVideoFormatDescriptionGetDimensions(format)
             guard dimensions.width > 0, dimensions.height > 0 else { return }
 
-            let recordingsDirectory = try recordingsDirectory()
-            let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-            let fileName = "DIVISA_SHOPPER_\(formatter.string(from: Date())).mov"
-            let url = recordingsDirectory.appendingPathComponent(fileName)
-
             do {
+                let recordingsDirectory = try recordingsDirectory()
+                let formatter = DateFormatter()
+                formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+                let fileName = "DIVISA_SHOPPER_\(formatter.string(from: Date())).mov"
+                let url = recordingsDirectory.appendingPathComponent(fileName)
+
                 let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
                 let settings: [String: Any] = [
                     AVVideoCodecKey: AVVideoCodecType.h264,
