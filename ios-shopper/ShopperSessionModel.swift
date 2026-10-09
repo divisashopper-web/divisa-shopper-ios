@@ -18,31 +18,65 @@ final class ShopperSessionModel: ObservableObject {
     @Published var statusMessage = "Preparada para iniciar sesión"
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
+    let liveKit = LiveKitSessionManager()
 
     func selectCamera(_ source: CameraSource) {
         selectedCamera = source
         statusMessage = "Fuente: \(source.rawValue)"
-        // El adaptador concreto cambia la pista de video sin abandonar la sala LiveKit.
+        // La sala LiveKit permanece activa cuando cambiemos la fuente de video.
     }
 
     func startSession() {
+        guard connectionState != .connecting && connectionState != .connected else { return }
+
         connectionState = .connecting
         statusMessage = "Solicitando acceso a la sesión…"
-        // Próximo paso: solicitar token y conectar Room de LiveKit.
+
+        Task {
+            do {
+                try await liveKit.connect(
+                    roomName: "divisa-shopper-prueba",
+                    identity: "shopper-iphone",
+                    displayName: "DIVISA SHOPPER"
+                )
+                connectionState = .connected
+                statusMessage = "Sesión privada conectada"
+                isMuted = false
+            } catch {
+                connectionState = .disconnected
+                statusMessage = "No se pudo conectar: \(error.localizedDescription)"
+            }
+        }
     }
 
     func endSession() {
-        connectionState = .idle
-        isRecording = false
-        clientVideoAvailable = false
-        statusMessage = "Sesión finalizada"
+        Task {
+            await liveKit.disconnect()
+            connectionState = .idle
+            isRecording = false
+            clientVideoAvailable = false
+            statusMessage = "Sesión finalizada"
+        }
     }
 
     func toggleMute() {
-        isMuted.toggle()
+        let newMutedState = !isMuted
+
+        Task {
+            do {
+                try await liveKit.setMicrophone(enabled: !newMutedState)
+                isMuted = newMutedState
+                statusMessage = newMutedState ? "Micrófono silenciado" : "Micrófono activo"
+            } catch {
+                statusMessage = "No se pudo cambiar el micrófono: \(error.localizedDescription)"
+            }
+        }
     }
 
     func toggleRecording() {
         isRecording.toggle()
+        statusMessage = isRecording
+            ? "Grabación marcada como activa (motor local pendiente)"
+            : "Grabación detenida"
     }
 }
