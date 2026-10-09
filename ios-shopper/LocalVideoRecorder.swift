@@ -9,6 +9,7 @@ final class LocalVideoRecorder: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var lastRecordingURL: URL?
     @Published private(set) var lastRecordingName: String?
+    @Published private(set) var recordings: [URL] = []
 
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
@@ -16,6 +17,10 @@ final class LocalVideoRecorder: ObservableObject {
     private var audioInput: AVAssetWriterInput?
     private let audioCapture = LocalAudioCapture()
     private var recordingWallClock: Date?
+
+    init() {
+        refreshRecordings()
+    }
 
     func start() {
         guard !isRecording else { return }
@@ -189,6 +194,36 @@ final class LocalVideoRecorder: ObservableObject {
         return directory
     }
 
+
+    func refreshRecordings() {
+        do {
+            let directory = try recordingsDirectory()
+            let urls = try FileManager.default.contentsOfDirectory(
+                at: directory,
+                includingPropertiesForKeys: [.creationDateKey, .fileSizeKey],
+                options: [.skipsHiddenFiles]
+            )
+            recordings = urls
+                .filter { $0.pathExtension.lowercased() == "mov" }
+                .sorted { lhs, rhs in
+                    let leftDate = (try? lhs.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
+                    let rightDate = (try? rhs.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? .distantPast
+                    return leftDate > rightDate
+                }
+        } catch {
+            recordings = []
+        }
+    }
+
+    func deleteRecording(at url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+        if lastRecordingURL == url {
+            lastRecordingURL = nil
+            lastRecordingName = nil
+        }
+        refreshRecordings()
+    }
+
     func stop() async {
         guard isRecording else { return }
         isRecording = false
@@ -202,5 +237,6 @@ final class LocalVideoRecorder: ObservableObject {
         input = nil
         startTime = nil
         recordingWallClock = nil
+        refreshRecordings()
     }
 }
