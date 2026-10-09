@@ -19,6 +19,13 @@ final class ShopperSessionModel: ObservableObject {
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
     let liveKit = LiveKitSessionManager()
+    let metaWearables = MetaWearablesManager()
+
+    init() {
+        metaWearables.onPixelBuffer = { [weak self] buffer in
+            self?.liveKit.pushRayBanFrame(buffer)
+        }
+    }
 
     func selectCamera(_ source: CameraSource) {
         selectedCamera = source
@@ -32,11 +39,20 @@ final class ShopperSessionModel: ObservableObject {
             do {
                 switch source {
                 case .iPhoneBack, .iPhoneFront:
+                    if liveKit.activeCameraSource == .rayBanMeta {
+                        await liveKit.stopRayBanVideo()
+                        metaWearables.stopRayBanPreview()
+                        metaWearables.onPixelBuffer = { [weak self] buffer in
+                            self?.liveKit.pushRayBanFrame(buffer)
+                        }
+                    }
                     try await liveKit.useIPhoneCamera(source)
                     statusMessage = "Transmitiendo: \(source.rawValue)"
                 case .rayBanMeta:
                     await liveKit.stopIPhoneCamera()
-                    statusMessage = "Sala activa. Preparando Ray-Ban Meta…"
+                    try await liveKit.useRayBanVideo()
+                    await metaWearables.startRayBanPreview()
+                    statusMessage = metaWearables.status
                 }
             } catch {
                 statusMessage = "No se pudo cambiar la cámara: \(error.localizedDescription)"
@@ -64,7 +80,9 @@ final class ShopperSessionModel: ObservableObject {
                     try await liveKit.useIPhoneCamera(selectedCamera)
                     statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
                 } else {
-                    statusMessage = "Sesión conectada · preparando Ray-Ban Meta"
+                    try await liveKit.useRayBanVideo()
+                    await metaWearables.startRayBanPreview()
+                    statusMessage = metaWearables.status
                 }
             } catch {
                 connectionState = .disconnected
@@ -75,6 +93,7 @@ final class ShopperSessionModel: ObservableObject {
 
     func endSession() {
         Task {
+            metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
             connectionState = .idle
             isRecording = false
