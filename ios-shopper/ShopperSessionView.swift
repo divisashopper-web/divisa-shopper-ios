@@ -9,6 +9,7 @@ struct ShopperSessionView: View {
             VStack(spacing: 18) {
                 header
                 activeCameraBadge
+                sessionSafetySummary
                 clientStage
                 sourcePicker
                 backupCameraIndicator
@@ -79,6 +80,19 @@ struct ShopperSessionView: View {
         .padding(10)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         .accessibilityLabel("Cámara activa: \(session.selectedCamera.rawValue)")
+    }
+
+    private var sessionSafetySummary: some View {
+        HStack(spacing: 12) {
+            Label(session.connectionState == .connected ? "En línea" : "No conectada", systemImage: session.connectionState == .connected ? "wifi" : "wifi.slash")
+            Spacer()
+            Label(session.isRecording ? session.recordingTimeText : "Sin grabar", systemImage: session.isRecording ? "record.circle.fill" : "record.circle")
+            Spacer()
+            Label(session.isMuted ? "Audio silenciado" : "Audio activo", systemImage: session.isMuted ? "mic.slash.fill" : "mic.fill")
+        }
+        .font(.caption.weight(.semibold))
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var clientStage: some View {
