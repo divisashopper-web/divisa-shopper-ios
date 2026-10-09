@@ -12,6 +12,7 @@ struct ShopperSessionView: View {
                 sourcePicker
                 backupCameraIndicator
                 rayBanRecoveryControl
+                cameraSwitchIndicator
                 recordingIndicator
                 controls
                 recordingResult
@@ -86,7 +87,7 @@ struct ShopperSessionView: View {
                 }
             }
             .pickerStyle(.menu)
-            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession)
+            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession || session.isSwitchingCamera)
             .onChange(of: session.selectedCamera) { _, newValue in
                 session.selectCamera(newValue)
             }
@@ -123,6 +124,21 @@ struct ShopperSessionView: View {
             }
             .buttonStyle(.borderedProminent)
             .disabled(session.connectionState != .connected || session.isEndingSession)
+        }
+    }
+
+    @ViewBuilder
+    private var cameraSwitchIndicator: some View {
+        if session.isSwitchingCamera {
+            HStack(spacing: 8) {
+                ProgressView()
+                Text("Cambiando cámara…")
+                    .fontWeight(.semibold)
+                Spacer()
+            }
+            .font(.subheadline)
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
         }
     }
 
