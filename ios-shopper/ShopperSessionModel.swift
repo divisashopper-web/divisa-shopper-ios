@@ -20,6 +20,7 @@ final class ShopperSessionModel: ObservableObject {
     @Published var isUsingBackupCamera = false
     @Published var preferredCamera: CameraSource = .iPhoneBack
     @Published var isEndingSession = false
+    @Published var recordingSaveError: String?
 
     private var recordingTimer: Timer?
 
@@ -220,7 +221,12 @@ final class ShopperSessionModel: ObservableObject {
                 await localRecorder.stop()
                 isRecording = false
                 stopRecordingTimer()
-                statusMessage = "Grabación local detenida"
+                if localRecorder.lastRecordingURL != nil {
+                    statusMessage = "Grabación local guardada"
+                } else {
+                    recordingSaveError = "No se pudo confirmar el archivo de la grabación."
+                    statusMessage = "Revisa la grabación antes de continuar"
+                }
             }
         } else {
             localRecorder.start()
