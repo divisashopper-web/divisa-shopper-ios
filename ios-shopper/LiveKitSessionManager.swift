@@ -14,6 +14,27 @@ final class LiveKitSessionManager: ObservableObject {
     private var localCameraPublication: LocalTrackPublication?
     private let metaBridge = MetaToLiveKitBridge()
     private var metaPublication: LocalTrackPublication?
+    private lazy var roomObserver = RoomConnectionObserver { [weak self] state in
+        Task { @MainActor in self?.applyRoomState(state) }
+    }
+
+    override init() {
+        super.init()
+        room.add(delegate: roomObserver)
+    }
+
+    private func applyRoomState(_ state: RoomConnectionObserver.State) {
+        switch state {
+        case .connected:
+            isConnected = true
+            roomStateText = "Sesión conectada"
+        case .reconnecting:
+            roomStateText = "Reconectando…"
+        case .disconnected:
+            isConnected = false
+            roomStateText = "Sin conexión"
+        }
+    }
 
     func connect(roomName: String, identity: String, displayName: String) async throws {
         roomStateText = "Solicitando acceso"
