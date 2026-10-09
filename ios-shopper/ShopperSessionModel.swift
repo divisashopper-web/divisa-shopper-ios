@@ -21,6 +21,7 @@ final class ShopperSessionModel: ObservableObject {
     @Published var preferredCamera: CameraSource = .iPhoneBack
     @Published var isEndingSession = false
     @Published var recordingSaveError: String?
+    @Published var isSwitchingCamera = false
 
     private var recordingTimer: Timer?
 
@@ -65,6 +66,7 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func selectCamera(_ source: CameraSource) {
+        guard !isSwitchingCamera && !isEndingSession else { return }
         preferredCamera = source
         selectedCamera = source
         isUsingBackupCamera = false
@@ -74,7 +76,9 @@ final class ShopperSessionModel: ObservableObject {
             return
         }
 
+        isSwitchingCamera = true
         Task {
+            defer { isSwitchingCamera = false }
             do {
                 switch source {
                 case .iPhoneBack, .iPhoneFront:
