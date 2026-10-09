@@ -1,4 +1,5 @@
 import Foundation
+import AVFoundation
 import LiveKit
 
 @MainActor
@@ -10,6 +11,7 @@ final class LiveKitSessionManager: ObservableObject {
     let room = Room()
     private let tokenService = TokenService()
     private var localCameraTrack: LocalVideoTrack?
+    private var localCameraPublication: LocalTrackPublication?
 
     func connect(roomName: String, identity: String, displayName: String) async throws {
         roomStateText = "Solicitando acceso"
@@ -31,40 +33,43 @@ final class LiveKitSessionManager: ObservableObject {
         guard source == .iPhoneBack || source == .iPhoneFront else { return }
 
         if localCameraTrack == nil {
-            let position: CameraPosition = source == .iPhoneFront ? .front : .back
+            let position: AVCaptureDevice.Position = source == .iPhoneFront ? .front : .back
             let options = CameraCaptureOptions(position: position)
             let track = LocalVideoTrack.createCameraTrack(
                 name: "iphone-camera",
                 options: options
             )
-            try await room.localParticipant.publish(videoTrack: track)
+            let publication = try await room.localParticipant.publish(videoTrack: track)
             localCameraTrack = track
+            localCameraPublication = publication
             activeCameraSource = source
             return
         }
 
         guard let capturer = localCameraTrack?.capturer as? CameraCapturer else { return }
-        let desiredPosition: CameraPosition = source == .iPhoneFront ? .front : .back
-        try await capturer.setCameraPosition(position: desiredPosition)
+        let desiredPosition: AVCaptureDevice.Position = source == .iPhoneFront ? .front : .back
+        _ = try await capturer.set(cameraPosition: desiredPosition)
         activeCameraSource = source
     }
 
     /// Apaga la captura del iPhone pero mantiene viva la sala LiveKit.
     /// Esto permite pasar a Ray-Ban Meta sin tumbar audio ni sesión.
     func stopIPhoneCamera() async {
-        guard let track = localCameraTrack else { return }
+        guard localCameraTrack != nil, let publication = localCameraPublication else { return }
         do {
-            try await room.localParticipant.unpublish(publication: track)
+            try await room.localParticipant.unpublish(publication: publication)
         } catch {
             // La desconexión de una fuente no debe tumbar la sesión.
         }
         localCameraTrack = nil
+        localCameraPublication = nil
         activeCameraSource = nil
     }
 
     func disconnect() async {
         await room.disconnect()
         localCameraTrack = nil
+        localCameraPublication = nil
         activeCameraSource = nil
         isConnected = false
         roomStateText = "Sin sesión"
