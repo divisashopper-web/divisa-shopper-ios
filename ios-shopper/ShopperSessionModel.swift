@@ -20,10 +20,18 @@ final class ShopperSessionModel: ObservableObject {
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
     let liveKit = LiveKitSessionManager()
     let metaWearables = MetaWearablesManager()
+    let localRecorder = LocalVideoRecorder()
 
     init() {
+        configureMetaFrameRoutes()
+    }
+
+    private func configureMetaFrameRoutes() {
         metaWearables.onPixelBuffer = { [weak self] buffer in
             self?.liveKit.pushRayBanFrame(buffer)
+        }
+        metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
+            self?.localRecorder.append(sampleBuffer)
         }
     }
 
@@ -42,9 +50,7 @@ final class ShopperSessionModel: ObservableObject {
                     if liveKit.activeCameraSource == .rayBanMeta {
                         await liveKit.stopRayBanVideo()
                         metaWearables.stopRayBanPreview()
-                        metaWearables.onPixelBuffer = { [weak self] buffer in
-                            self?.liveKit.pushRayBanFrame(buffer)
-                        }
+                        configureMetaFrameRoutes()
                     }
                     try await liveKit.useIPhoneCamera(source)
                     statusMessage = "Transmitiendo: \(source.rawValue)"
@@ -117,9 +123,18 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func toggleRecording() {
-        isRecording.toggle()
-        statusMessage = isRecording
-            ? "Grabación marcada como activa (motor local pendiente)"
-            : "Grabación detenida"
+        if isRecording {
+            Task {
+                await localRecorder.stop()
+                isRecording = false
+                statusMessage = "Grabación local detenida"
+            }
+        } else {
+            localRecorder.start()
+            isRecording = true
+            statusMessage = selectedCamera == .rayBanMeta
+                ? "Grabando localmente desde Ray-Ban Meta"
+                : "Grabación local preparada (iPhone pendiente)"
+        }
     }
 }
