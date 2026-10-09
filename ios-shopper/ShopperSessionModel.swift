@@ -213,6 +213,7 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func toggleMute() {
+        guard connectionState == .connected, !isEndingSession, !isSwitchingCamera else { return }
         let newMutedState = !isMuted
 
         Task {
