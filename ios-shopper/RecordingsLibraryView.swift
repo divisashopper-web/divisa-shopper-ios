@@ -4,6 +4,7 @@ import SwiftUI
 struct RecordingsLibraryView: View {
     @ObservedObject var recorder: LocalVideoRecorder
     @State private var selectedRecording: URL?
+    @State private var recordingToDelete: URL?
 
     var body: some View {
         List {
@@ -39,7 +40,7 @@ struct RecordingsLibraryView: View {
                     .buttonStyle(.plain)
                     .swipeActions {
                         Button(role: .destructive) {
-                            try? recorder.deleteRecording(at: url)
+                            recordingToDelete = url
                         } label: {
                             Label("Eliminar", systemImage: "trash")
                         }
@@ -52,6 +53,26 @@ struct RecordingsLibraryView: View {
         .sheet(item: $selectedRecording) { url in
             VideoPlayer(player: AVPlayer(url: url))
                 .ignoresSafeArea()
+        }
+        .confirmationDialog(
+            "¿Eliminar esta grabación?",
+            isPresented: Binding(
+                get: { recordingToDelete != nil },
+                set: { if !$0 { recordingToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Eliminar definitivamente", role: .destructive) {
+                if let url = recordingToDelete {
+                    try? recorder.deleteRecording(at: url)
+                }
+                recordingToDelete = nil
+            }
+            Button("Cancelar", role: .cancel) {
+                recordingToDelete = nil
+            }
+        } message: {
+            Text("El archivo se borrará del iPhone y no podrá recuperarse desde DIVISA SHOPPER.")
         }
     }
 
