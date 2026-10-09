@@ -11,6 +11,10 @@ struct ShopperSessionView: View {
                 activeCameraBadge
                 sessionSafetySummary
                 clientStage
+                Text("Video del cliente")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 sourcePicker
                 backupCameraIndicator
                 rayBanRecoveryControl
