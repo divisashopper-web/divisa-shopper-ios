@@ -12,6 +12,8 @@ final class LiveKitSessionManager: ObservableObject {
     private let tokenService = TokenService()
     private var localCameraTrack: LocalVideoTrack?
     private var localCameraPublication: LocalTrackPublication?
+    private let metaBridge = MetaToLiveKitBridge()
+    private var metaPublication: LocalTrackPublication?
 
     func connect(roomName: String, identity: String, displayName: String) async throws {
         roomStateText = "Solicitando acceso"
@@ -52,6 +54,33 @@ final class LiveKitSessionManager: ObservableObject {
         activeCameraSource = source
     }
 
+    /// Publica los fotogramas de las gafas en la misma sala privada.
+    func useRayBanVideo() async throws {
+        if metaPublication != nil { return }
+        let track = metaBridge.prepareTrack()
+        do {
+            metaPublication = try await room.localParticipant.publish(videoTrack: track)
+            activeCameraSource = .rayBanMeta
+        } catch {
+            metaBridge.reset()
+            throw error
+        }
+    }
+
+    func pushRayBanFrame(_ pixelBuffer: CVPixelBuffer) {
+        guard metaPublication != nil else { return }
+        metaBridge.push(pixelBuffer: pixelBuffer)
+    }
+
+    func stopRayBanVideo() async {
+        if let publication = metaPublication {
+            try? await room.localParticipant.unpublish(publication: publication)
+        }
+        metaPublication = nil
+        metaBridge.reset()
+        if activeCameraSource == .rayBanMeta { activeCameraSource = nil }
+    }
+
     /// Apaga la captura del iPhone pero mantiene viva la sala LiveKit.
     /// Esto permite pasar a Ray-Ban Meta sin tumbar audio ni sesión.
     func stopIPhoneCamera() async {
@@ -68,6 +97,8 @@ final class LiveKitSessionManager: ObservableObject {
 
     func disconnect() async {
         await room.disconnect()
+        metaPublication = nil
+        metaBridge.reset()
         localCameraTrack = nil
         localCameraPublication = nil
         activeCameraSource = nil
