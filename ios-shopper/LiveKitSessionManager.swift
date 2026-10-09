@@ -12,6 +12,7 @@ final class LiveKitSessionManager: ObservableObject {
     private let tokenService = TokenService()
     private var localCameraTrack: LocalVideoTrack?
     private var localCameraPublication: LocalTrackPublication?
+    private var iPhoneRecordingProcessor: IPhoneRecordingVideoProcessor?
     private let metaBridge = MetaToLiveKitBridge()
     private var metaPublication: LocalTrackPublication?
     private lazy var roomObserver = RoomConnectionObserver { [weak self] state in
@@ -51,15 +52,18 @@ final class LiveKitSessionManager: ObservableObject {
 
     /// Publica una cámara del iPhone sin abandonar la sala.
     /// Al cambiar frontal/trasera, LiveKit reemplaza la captura manteniendo la llamada.
-    func useIPhoneCamera(_ source: CameraSource) async throws {
+    func useIPhoneCamera(_ source: CameraSource, recorder: LocalVideoRecorder? = nil) async throws {
         guard source == .iPhoneBack || source == .iPhoneFront else { return }
 
         if localCameraTrack == nil {
             let position: AVCaptureDevice.Position = source == .iPhoneFront ? .front : .back
             let options = CameraCaptureOptions(position: position)
+            let processor = recorder.map { IPhoneRecordingVideoProcessor(recorder: $0) }
+            iPhoneRecordingProcessor = processor
             let track = await LocalVideoTrack.createCameraTrack(
                 name: "iphone-camera",
-                options: options
+                options: options,
+                processor: processor
             )
             let publication = try await room.localParticipant.publish(videoTrack: track)
             localCameraTrack = track
@@ -112,6 +116,7 @@ final class LiveKitSessionManager: ObservableObject {
         }
         localCameraTrack = nil
         localCameraPublication = nil
+        iPhoneRecordingProcessor = nil
         activeCameraSource = nil
     }
 
@@ -121,6 +126,7 @@ final class LiveKitSessionManager: ObservableObject {
         metaBridge.reset()
         localCameraTrack = nil
         localCameraPublication = nil
+        iPhoneRecordingProcessor = nil
         activeCameraSource = nil
         isConnected = false
         roomStateText = "Sin sesión"
