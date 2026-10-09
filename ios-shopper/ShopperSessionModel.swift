@@ -52,7 +52,7 @@ final class ShopperSessionModel: ObservableObject {
                         metaWearables.stopRayBanPreview()
                         configureMetaFrameRoutes()
                     }
-                    try await liveKit.useIPhoneCamera(source)
+                    try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
                     statusMessage = "Transmitiendo: \(source.rawValue)"
                 case .rayBanMeta:
                     await liveKit.stopIPhoneCamera()
@@ -83,7 +83,7 @@ final class ShopperSessionModel: ObservableObject {
                 isMuted = false
 
                 if selectedCamera == .iPhoneBack || selectedCamera == .iPhoneFront {
-                    try await liveKit.useIPhoneCamera(selectedCamera)
+                    try await liveKit.useIPhoneCamera(selectedCamera, recorder: localRecorder)
                     statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
                 } else {
                     try await liveKit.useRayBanVideo()
