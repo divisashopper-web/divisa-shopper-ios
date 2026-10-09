@@ -8,6 +8,7 @@ import Foundation
 final class LocalVideoRecorder: ObservableObject {
     @Published private(set) var isRecording = false
     @Published private(set) var lastRecordingURL: URL?
+    @Published private(set) var lastRecordingName: String?
 
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
@@ -24,6 +25,7 @@ final class LocalVideoRecorder: ObservableObject {
         startTime = nil
         recordingWallClock = nil
         lastRecordingURL = nil
+        lastRecordingName = nil
         recordingWallClock = Date()
         isRecording = true
         try? audioCapture.start { [weak self] buffer, _ in
@@ -68,8 +70,11 @@ final class LocalVideoRecorder: ObservableObject {
             let dimensions = CMVideoFormatDescriptionGetDimensions(format)
             guard dimensions.width > 0, dimensions.height > 0 else { return }
 
-            let url = FileManager.default.temporaryDirectory
-                .appendingPathComponent("DIVISA_SHOPPER_\(UUID().uuidString).mov")
+            let recordingsDirectory = try recordingsDirectory()
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+            let fileName = "DIVISA_SHOPPER_\(formatter.string(from: Date())).mov"
+            let url = recordingsDirectory.appendingPathComponent(fileName)
 
             do {
                 let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
@@ -90,6 +95,7 @@ final class LocalVideoRecorder: ObservableObject {
                 self.input = input
                 self.startTime = pts
                 self.lastRecordingURL = url
+                self.lastRecordingName = url.lastPathComponent
                 self.configureAudioInputIfNeeded(format: nil)
             } catch {
                 return
@@ -170,6 +176,19 @@ final class LocalVideoRecorder: ObservableObject {
         audioInput.append(sampleBuffer)
     }
 
+
+    private func recordingsDirectory() throws -> URL {
+        let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let directory = documents.appendingPathComponent("DIVISA SHOPPER", isDirectory: true)
+        if !FileManager.default.fileExists(atPath: directory.path) {
+            try FileManager.default.createDirectory(
+                at: directory,
+                withIntermediateDirectories: true
+            )
+        }
+        return directory
+    }
+
     func stop() async {
         guard isRecording else { return }
         isRecording = false
@@ -182,5 +201,6 @@ final class LocalVideoRecorder: ObservableObject {
         writer = nil
         input = nil
         startTime = nil
+        recordingWallClock = nil
     }
 }
