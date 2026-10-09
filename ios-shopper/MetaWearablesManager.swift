@@ -2,6 +2,8 @@ import Foundation
 import MWDATCore
 import MWDATCamera
 import UIKit
+import CoreMedia
+import CoreVideo
 
 @MainActor
 final class MetaWearablesManager: ObservableObject {
@@ -14,6 +16,9 @@ final class MetaWearablesManager: ObservableObject {
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
     private let listenerTokens = ListenerTokenBag()
+
+    /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
+    var onPixelBuffer: ((CVPixelBuffer) -> Void)?
 
     func registerGlasses() async {
         do {
@@ -58,9 +63,11 @@ final class MetaWearablesManager: ObservableObject {
             self.stream = stream
 
             stream.videoFramePublisher.listen { [weak self] frame in
-                    guard let image = frame.makeUIImage() else { return }
+                    let image = frame.makeUIImage()
+                    let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
                     Task { @MainActor in
-                        self?.previewImage = image
+                        if let image { self?.previewImage = image }
+                        if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
                     }
                 }.store(in: listenerTokens)
 
@@ -81,6 +88,8 @@ final class MetaWearablesManager: ObservableObject {
     }
 
     func stopRayBanPreview() {
+        listenerTokens.clear()
+        onPixelBuffer = nil
         camera?.stop()
         deviceSession?.stop()
         stream = nil
