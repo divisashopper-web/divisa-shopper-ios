@@ -8,6 +8,7 @@ struct ShopperSessionView: View {
         NavigationStack {
             VStack(spacing: 18) {
                 header
+                activeCameraBadge
                 clientStage
                 sourcePicker
                 backupCameraIndicator
@@ -65,6 +66,19 @@ struct ShopperSessionView: View {
         case .connected: return "checkmark.circle.fill"
         case .disconnected: return "wifi.slash"
         }
+    }
+
+    private var activeCameraBadge: some View {
+        HStack(spacing: 8) {
+            Image(systemName: session.selectedCamera == .rayBanMeta ? "eyeglasses" : "camera.fill")
+            Text("Cámara activa: \(session.selectedCamera.rawValue)")
+                .fontWeight(.semibold)
+            Spacer()
+        }
+        .font(.subheadline)
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .accessibilityLabel("Cámara activa: \(session.selectedCamera.rawValue)")
     }
 
     private var clientStage: some View {
