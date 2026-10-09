@@ -183,7 +183,7 @@ struct ShopperSessionView: View {
                 }
             }
             .buttonStyle(.borderedProminent)
-            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession)
+            .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession || session.isSwitchingCamera)
             .confirmationDialog(
                 "¿Finalizar la sesión de compra?",
                 isPresented: $showEndSessionConfirmation,
