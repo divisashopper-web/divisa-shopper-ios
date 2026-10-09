@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShopperSessionView: View {
     @EnvironmentObject var session: ShopperSessionModel
+    @State private var showEndSessionConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -130,13 +131,25 @@ struct ShopperSessionView: View {
 
             Button(session.connectionState == .connected ? "Finalizar sesión" : "Iniciar sesión") {
                 if session.connectionState == .connected {
-                    session.endSession()
+                    showEndSessionConfirmation = true
                 } else {
                     session.startSession()
                 }
             }
             .buttonStyle(.borderedProminent)
             .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting)
+            .confirmationDialog(
+                "¿Finalizar la sesión de compra?",
+                isPresented: $showEndSessionConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Finalizar sesión", role: .destructive) {
+                    session.endSession()
+                }
+                Button("Continuar comprando", role: .cancel) {}
+            } message: {
+                Text("La videollamada terminará y, si hay una grabación activa, se guardará antes de cerrar.")
+            }
         }
         .font(.caption)
     }
