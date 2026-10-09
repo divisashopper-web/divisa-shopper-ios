@@ -91,8 +91,6 @@ final class MetaWearablesManager: ObservableObject {
 
     func stopRayBanPreview() {
         listenerTokens.clear()
-        onPixelBuffer = nil
-        onVideoSampleBuffer = nil
         camera?.stop()
         deviceSession?.stop()
         stream = nil
