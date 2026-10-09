@@ -19,6 +19,7 @@ final class MetaWearablesManager: ObservableObject {
 
     /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
     var onPixelBuffer: ((CVPixelBuffer) -> Void)?
+    var onVideoSampleBuffer: ((CMSampleBuffer) -> Void)?
 
     func registerGlasses() async {
         do {
@@ -68,6 +69,7 @@ final class MetaWearablesManager: ObservableObject {
                     Task { @MainActor in
                         if let image { self?.previewImage = image }
                         if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
+                        self?.onVideoSampleBuffer?(frame.sampleBuffer)
                     }
                 }.store(in: listenerTokens)
 
@@ -90,6 +92,7 @@ final class MetaWearablesManager: ObservableObject {
     func stopRayBanPreview() {
         listenerTokens.clear()
         onPixelBuffer = nil
+        onVideoSampleBuffer = nil
         camera?.stop()
         deviceSession?.stop()
         stream = nil
