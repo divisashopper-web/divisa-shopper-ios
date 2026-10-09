@@ -29,14 +29,27 @@ struct ShopperSessionView: View {
                 .font(.title.bold())
             Text("APP DEL SHOPPER")
                 .font(.caption.weight(.semibold))
-            Text(session.connectionState.rawValue)
-                .font(.subheadline)
+            HStack(spacing: 7) {
+                Image(systemName: connectionIcon)
+                Text(session.connectionState.rawValue)
+            }
+            .font(.subheadline.weight(.semibold))
+            .accessibilityLabel("Estado de sesión: \(session.connectionState.rawValue)")
             NavigationLink {
                 RecordingsLibraryView(recorder: session.localRecorder)
             } label: {
                 Label("Grabaciones", systemImage: "video.badge.checkmark")
                     .font(.caption.weight(.semibold))
             }
+        }
+    }
+
+    private var connectionIcon: String {
+        switch session.connectionState {
+        case .idle: return "circle"
+        case .connecting, .reconnecting: return "arrow.triangle.2.circlepath"
+        case .connected: return "checkmark.circle.fill"
+        case .disconnected: return "wifi.slash"
         }
     }
 
