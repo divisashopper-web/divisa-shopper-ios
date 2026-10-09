@@ -130,6 +130,7 @@ struct ShopperSessionView: View {
             }
             .pickerStyle(.menu)
             .disabled(session.connectionState == .connecting || session.connectionState == .reconnecting || session.isEndingSession || session.isSwitchingCamera)
+            .accessibilityHint(session.connectionState == .connected ? "Finaliza la compra actual" : "Conecta la aplicación con la sesión privada del cliente")
             .onChange(of: session.selectedCamera) { _, newValue in
                 session.selectCamera(newValue)
             }
