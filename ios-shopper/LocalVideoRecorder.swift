@@ -31,6 +31,35 @@ final class LocalVideoRecorder: ObservableObject {
         }
     }
 
+
+    /// Recibe fotogramas crudos de la cámara del iPhone (vía LiveKit VideoProcessor).
+    func append(pixelBuffer: CVPixelBuffer, timeStampNs: Int64) {
+        guard isRecording else { return }
+
+        var formatDescription: CMVideoFormatDescription?
+        guard CMVideoFormatDescriptionCreateForImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pixelBuffer,
+            formatDescriptionOut: &formatDescription
+        ) == noErr, let formatDescription else { return }
+
+        var timing = CMSampleTimingInfo(
+            duration: .invalid,
+            presentationTimeStamp: CMTime(value: timeStampNs, timescale: 1_000_000_000),
+            decodeTimeStamp: .invalid
+        )
+        var sampleBuffer: CMSampleBuffer?
+        guard CMSampleBufferCreateReadyWithImageBuffer(
+            allocator: kCFAllocatorDefault,
+            imageBuffer: pixelBuffer,
+            formatDescription: formatDescription,
+            sampleTiming: &timing,
+            sampleBufferOut: &sampleBuffer
+        ) == noErr, let sampleBuffer else { return }
+
+        append(sampleBuffer)
+    }
+
     func append(_ sampleBuffer: CMSampleBuffer) {
         guard isRecording, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
