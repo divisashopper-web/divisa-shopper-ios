@@ -170,6 +170,12 @@ final class ShopperSessionModel: ObservableObject {
                 await localRecorder.stop()
                 isRecording = false
                 stopRecordingTimer()
+                guard localRecorder.lastRecordingURL != nil else {
+                    recordingSaveError = "No se pudo confirmar el archivo. La sesión seguirá conectada para proteger la compra."
+                    statusMessage = "Grabación no confirmada · sesión continúa conectada"
+                    isEndingSession = false
+                    return
+                }
             }
             metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
