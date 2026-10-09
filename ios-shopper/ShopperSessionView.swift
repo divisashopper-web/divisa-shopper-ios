@@ -34,17 +34,8 @@ struct ShopperSessionView: View {
             RoundedRectangle(cornerRadius: 24)
                 .fill(.black)
                 .aspectRatio(9/16, contentMode: .fit)
-            if session.clientVideoAvailable {
-                Text("VIDEO DEL CLIENTE")
-                    .foregroundStyle(.white)
-            } else {
-                VStack(spacing: 10) {
-                    Image(systemName: "person.crop.rectangle")
-                        .font(.system(size: 44))
-                    Text("Aquí aparecerá el cliente")
-                }
-                .foregroundStyle(.white.opacity(0.8))
-            }
+            RemoteClientVideoView(room: session.liveKit.room)
+                .clipShape(RoundedRectangle(cornerRadius: 24))
         }
     }
 
