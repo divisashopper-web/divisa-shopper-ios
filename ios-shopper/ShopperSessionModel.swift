@@ -152,7 +152,17 @@ final class ShopperSessionModel: ObservableObject {
                 } else {
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    statusMessage = metaWearables.status
+                    if metaWearables.isStreaming {
+                        statusMessage = metaWearables.status
+                    } else {
+                        await liveKit.stopRayBanVideo()
+                        statusMessage = "Ray-Ban no disponible · activando respaldo iPhone…"
+                        try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                        selectedCamera = .iPhoneBack
+                        preferredCamera = .rayBanMeta
+                        isUsingBackupCamera = true
+                        statusMessage = "Sesión conectada · respaldo iPhone trasera activo"
+                    }
                 }
             } catch {
                 connectionState = .disconnected
