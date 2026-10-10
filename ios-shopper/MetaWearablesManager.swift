@@ -11,7 +11,9 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
 
-    private let wearables = Wearables.shared
+    // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
+    // el usuario solicita registrar o conectar las gafas.
+    private var wearables: Wearables { Wearables.shared }
     private var deviceSession: DeviceSession?
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
