@@ -13,7 +13,7 @@ final class MetaWearablesManager: ObservableObject {
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
-    private var wearables: Wearables { Wearables.shared }
+    private var wearables: any WearablesInterface { Wearables.shared }
     private var deviceSession: DeviceSession?
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
