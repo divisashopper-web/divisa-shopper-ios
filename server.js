@@ -125,6 +125,26 @@ app.post("/token", async (req, res) => {
       return res.status(400).json({ error: "room and identity are required" });
     }
 
+    // Ensure the room exists before issuing the participant token.
+    // This also reveals a room-creation problem in server logs, instead of
+    // misreporting it as an iPhone camera or microphone failure.
+    const endpoint = new URL(url);
+    endpoint.protocol = endpoint.protocol === "wss:" ? "https:" : "http:";
+    const roomService = new RoomServiceClient(endpoint.origin, apiKey, apiSecret);
+    try {
+      await roomService.createRoom({ name: room, emptyTimeout: 300 });
+      console.log(`[room] ready room=${room}`);
+    } catch (roomError) {
+      const errorCode = Number(roomError?.status || roomError?.statusCode || 0);
+      // LiveKit may report already-existing rooms as an error; verify by listing.
+      const existing = await roomService.listRooms([room]);
+      if (!existing.some((item) => item.name === room)) {
+        console.error("[room] creation failed", errorCode || "unknown");
+        return res.status(502).json({ error: "Could not prepare LiveKit room", stage: "ROOM" });
+      }
+      console.log(`[room] already exists room=${room}`);
+    }
+
     const token = new AccessToken(apiKey, apiSecret, { identity, name });
     token.addGrant({ roomJoin: true, room });
     const jwt = await token.toJwt();
