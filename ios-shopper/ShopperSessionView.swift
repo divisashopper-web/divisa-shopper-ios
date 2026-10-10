@@ -216,7 +216,10 @@ struct ShopperSessionView: View {
                 session.toggleRecording()
             }
             .buttonStyle(.bordered)
-            .disabled(session.connectionState != .connected || session.isEndingSession || session.isSwitchingCamera)
+            // A recording is local and independent from LiveKit. If the call
+            // drops while recording, the shopper must still be able to stop
+            // and finalize the file safely.
+            .disabled((!session.isRecording && session.connectionState != .connected) || session.isEndingSession || session.isSwitchingCamera)
 
             Button(session.connectionState == .connected ? "Finalizar sesión" : "Iniciar sesión") {
                 if session.connectionState == .connected {
