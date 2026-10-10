@@ -8,6 +8,9 @@ on:
       - "ios-shopper/**"
       - ".github/workflows/ios-shopper-build.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build:
     runs-on: macos-latest
@@ -30,3 +33,175 @@ jobs:
         working-directory: ios-shopper
         run: |
           xcodebuild             -project DIVISAShopper.xcodeproj             -scheme DIVISAShopper             -sdk iphonesimulator             -destination 'generic/platform=iOS Simulator'             CODE_SIGNING_ALLOWED=NO             build
+
+  device:
+    name: Signed iPhone IPA
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Import and validate development signing
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_P12_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_P12_PASSWORD }}
+          PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 <<'PY'
+          import base64, datetime, hashlib, json, os, pathlib, plistlib, re, secrets, subprocess
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          def require(condition, message):
+              if not condition:
+                  raise SystemExit(message)
+          def run(*args):
+              result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+              require(result.returncode == 0, "Signing command failed: " + args[0] + " " + args[1])
+              return result.stdout
+          for variable, filename in [("CERTIFICATE_BASE64", "signing.p12"), ("PROFILE_BASE64", "profile.mobileprovision")]:
+              value = os.environ.get(variable, "")
+              require(bool(value.strip()), "Missing signing secret: " + variable)
+              try:
+                  decoded = base64.b64decode("".join(value.split()), validate=True)
+              except ValueError:
+                  raise SystemExit("Invalid base64 signing secret: " + variable)
+              (temp / filename).write_bytes(decoded)
+          profile = plistlib.loads(run("security", "cms", "-D", "-i", str(temp / "profile.mobileprovision")))
+          entitlements = profile["Entitlements"]
+          team = profile["TeamIdentifier"][0]
+          uuid = profile["UUID"]
+          require(bool(re.fullmatch(r"[A-Fa-f0-9-]{36}", uuid)), "Invalid provisioning profile UUID")
+          require(profile["ExpirationDate"] > datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None), "Provisioning profile has expired")
+          require(entitlements.get("get-task-allow") is True, "An Apple Development profile is required")
+          require(bool(profile.get("ProvisionedDevices")), "Profile contains no registered devices")
+          require(entitlements.get("application-identifier") == profile["ApplicationIdentifierPrefix"][0] + ".com.divisashopper.shopper", "Profile bundle ID must be com.divisashopper.shopper")
+          password = secrets.token_urlsafe(32)
+          keychain = str(temp / "app-signing.keychain-db")
+          for value in [password, team, uuid, profile.get("Name", ""), *profile["ProvisionedDevices"]]:
+              if value:
+                  print("::add-mask::" + value, flush=True)
+          run("security", "create-keychain", "-p", password, keychain)
+          run("security", "set-keychain-settings", "-lut", "21600", keychain)
+          run("security", "unlock-keychain", "-p", password, keychain)
+          run("security", "import", str(temp / "signing.p12"), "-P", os.environ["CERTIFICATE_PASSWORD"], "-A", "-t", "cert", "-f", "pkcs12", "-k", keychain)
+          run("security", "set-key-partition-list", "-S", "apple-tool:,apple:,codesign:", "-k", password, keychain)
+          run("security", "list-keychains", "-d", "user", "-s", keychain, str(pathlib.Path.home() / "Library/Keychains/login.keychain-db"))
+          identities = run("security", "find-identity", "-v", "-p", "codesigning", keychain).decode()
+          allowed = {hashlib.sha1(certificate).hexdigest().upper() for certificate in profile["DeveloperCertificates"]}
+          matches = [digest for digest, name in re.findall(r'([A-F0-9]{40}) "([^"]+)"', identities) if digest in allowed and name.startswith("Apple Development:")]
+          require(bool(matches), "No valid Apple Development identity with private key matches the profile")
+          identity = matches[0]
+          print("::add-mask::" + identity, flush=True)
+          for directory in ["Library/MobileDevice/Provisioning Profiles", "Library/Developer/Xcode/UserData/Provisioning Profiles"]:
+              destination = pathlib.Path.home() / directory
+              destination.mkdir(parents=True, exist_ok=True)
+              (destination / (uuid + ".mobileprovision")).write_bytes((temp / "profile.mobileprovision").read_bytes())
+          (temp / "profile-uuid").write_text(uuid)
+          # Apply signing only to the application target, never to Swift package targets.
+          project = pathlib.Path("ios-shopper/project.yml")
+          settings = {
+              "CODE_SIGN_STYLE": "Manual", "DEVELOPMENT_TEAM": team,
+              "CODE_SIGN_IDENTITY": identity, "PROVISIONING_PROFILE_SPECIFIER": uuid,
+              "MARKETING_VERSION": "1.0.0", "CURRENT_PROJECT_VERSION": os.environ["GITHUB_RUN_NUMBER"],
+          }
+          with project.open("a") as file:
+              file.write("    settings:\n      base:\n")
+              for key, value in settings.items():
+                  file.write("        " + key + ": " + json.dumps(value) + "\n")
+          options = {
+              "method": "debugging", "signingStyle": "manual", "teamID": team,
+              "signingCertificate": identity,
+              "provisioningProfiles": {"com.divisashopper.shopper": uuid},
+              "manageAppVersionAndBuildNumber": False,
+              "stripSwiftSymbols": True,
+          }
+          with (temp / "ExportOptions.plist").open("wb") as file:
+              plistlib.dump(options, file)
+          (temp / "signing.p12").unlink()
+          print("Development certificate and registered-device profile validated.")
+          PY
+
+      - name: Generate Xcode project
+        working-directory: ios-shopper
+        run: xcodegen generate
+
+      - name: Archive for physical iPhone
+        working-directory: ios-shopper
+        run: |
+          set -euo pipefail
+          xcodebuild -project DIVISAShopper.xcodeproj \
+            -scheme DIVISAShopper -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/DIVISAShopper.xcarchive" \
+            archive
+
+      - name: Export signed development IPA
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/DIVISAShopper.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/ipa"
+
+      - name: Verify exported signature and package
+        run: |
+          set -euo pipefail
+          python3 <<'PY'
+          import os, pathlib, plistlib, subprocess, zipfile
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          ipas = list((temp / "ipa").glob("*.ipa"))
+          assert len(ipas) == 1, "Expected exactly one IPA"
+          unpacked = temp / "verified-ipa"
+          with zipfile.ZipFile(ipas[0]) as archive:
+              archive.extractall(unpacked)
+          apps = list((unpacked / "Payload").glob("*.app"))
+          assert len(apps) == 1, "Expected exactly one app"
+          app = apps[0]
+          subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+          with (app / "Info.plist").open("rb") as file:
+              info = plistlib.load(file)
+          assert info["CFBundleIdentifier"] == "com.divisashopper.shopper"
+          result = subprocess.run(["security", "cms", "-D", "-i", str(app / "embedded.mobileprovision")], check=True, capture_output=True)
+          profile = plistlib.loads(result.stdout)
+          assert profile["UUID"] == (temp / "profile-uuid").read_text()
+          assert profile["Entitlements"]["get-task-allow"] is True
+          assert profile["ProvisionedDevices"]
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as summary:
+              summary.write("## DIVISA SHOPPER para iPhone\n\n")
+              summary.write("IPA de desarrollo exportada y firma verificada para com.divisashopper.shopper.\n\n")
+              summary.write("Descarga el artefacto, extrae el ZIP e instala la IPA con Xcode o Apple Configurator en el iPhone registrado. Activa Modo de desarrollador en el iPhone.\n\n")
+              summary.write("Esta compilación no se distribuye por TestFlight ni App Store.\n")
+          print("Exported IPA signature, bundle ID and provisioning profile verified.")
+          PY
+
+      - name: Upload signed iPhone app
+        uses: actions/upload-artifact@v4
+        with:
+          name: DIVISA-SHOPPER-iPhone-${{ github.run_number }}
+          path: ${{ runner.temp }}/ipa/*.ipa
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" 2>/dev/null || true
+          python3 <<'PY'
+          import os, pathlib
+          temp = pathlib.Path(os.environ["RUNNER_TEMP"])
+          uuid_file = temp / "profile-uuid"
+          if uuid_file.exists():
+              uuid = uuid_file.read_text()
+              for directory in ["Library/MobileDevice/Provisioning Profiles", "Library/Developer/Xcode/UserData/Provisioning Profiles"]:
+                  (pathlib.Path.home() / directory / (uuid + ".mobileprovision")).unlink(missing_ok=True)
+          for name in ["signing.p12", "profile.mobileprovision", "profile-uuid", "ExportOptions.plist"]:
+              (temp / name).unlink(missing_ok=True)
+          PY
