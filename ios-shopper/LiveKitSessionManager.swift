@@ -2,6 +2,16 @@ import Foundation
 import AVFoundation
 import LiveKit
 
+private struct ConnectionStageError: LocalizedError {
+    let stage: String
+    let underlying: Error
+
+    var errorDescription: String? {
+        // Indicar la etapa sin exponer el JWT ni datos privados.
+        "Fallo en \(stage): \(underlying.localizedDescription)"
+    }
+}
+
 @MainActor
 final class LiveKitSessionManager: ObservableObject {
     @Published private(set) var roomStateText = "Sin sesión"
@@ -38,12 +48,28 @@ final class LiveKitSessionManager: ObservableObject {
 
     func connect(roomName: String, identity: String, displayName: String) async throws {
         roomStateText = "Solicitando acceso"
-        let credentials = try await tokenService.token(room: roomName, identity: identity, name: displayName)
-        roomStateText = "Conectando"
-        try await room.connect(url: credentials.url, token: credentials.token)
+        let credentials: LiveKitTokenResponse
+        do {
+            credentials = try await tokenService.token(room: roomName, identity: identity, name: displayName)
+        } catch {
+            throw ConnectionStageError(stage: "TOKEN", underlying: error)
+        }
+
+        roomStateText = "Conectando a LiveKit"
+        do {
+            try await room.connect(url: credentials.url, token: credentials.token)
+        } catch {
+            throw ConnectionStageError(stage: "LIVEKIT", underlying: error)
+        }
+
         isConnected = true
+        roomStateText = "Activando micrófono"
+        do {
+            try await room.localParticipant.setMicrophone(enabled: true)
+        } catch {
+            throw ConnectionStageError(stage: "MICRÓFONO", underlying: error)
+        }
         roomStateText = "Sesión conectada"
-        try await room.localParticipant.setMicrophone(enabled: true)
     }
 
     func setMicrophone(enabled: Bool) async throws {
