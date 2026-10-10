@@ -33,9 +33,10 @@ final class LocalVideoRecorder: ObservableObject {
         lastRecordingName = nil
         recordingWallClock = Date()
         isRecording = true
-        try? audioCapture.start { [weak self] buffer, _ in
-            self?.appendAudio(buffer)
-        }
+        // V1 diagnostic/stability path: record video only.
+        // LiveKit owns the active call audio session. Starting a second
+        // microphone capture here was crashing the app on the physical iPhone.
+        // Audio will be reintroduced only after video recording is proven stable.
     }
 
 
@@ -227,7 +228,7 @@ final class LocalVideoRecorder: ObservableObject {
     func stop() async {
         guard isRecording else { return }
         isRecording = false
-        audioCapture.stop()
+        // No independent microphone capture while LiveKit owns call audio.
         input?.markAsFinished()
         audioInput?.markAsFinished()
         if let writer {
