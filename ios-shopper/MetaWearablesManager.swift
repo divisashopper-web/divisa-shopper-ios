@@ -92,6 +92,18 @@ final class MetaWearablesManager: ObservableObject {
         }
     }
 
+    /// Espera el estado real del stream antes de decidir si usar el respaldo.
+    /// Evita interpretar como fallo el tiempo normal de conexión de las gafas.
+    func waitUntilStreaming(timeoutSeconds: Double = 12) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if isStreaming { return true }
+            try? await Task.sleep(for: .milliseconds(250))
+            if Task.isCancelled { return false }
+        }
+        return isStreaming
+    }
+
     func stopRayBanPreview() {
         listenerTokens.clear()
         camera?.stop()
