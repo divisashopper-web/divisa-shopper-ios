@@ -251,7 +251,9 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func toggleRecording() {
-        guard connectionState == .connected, !isEndingSession, !isSwitchingCamera else { return }
+        // Stopping a local recording must remain possible even if LiveKit drops.
+        // Only starting a new recording requires an active client session.
+        guard !isEndingSession, !isSwitchingCamera else { return }
         if isRecording {
             Task {
                 await localRecorder.stop()
@@ -265,6 +267,10 @@ final class ShopperSessionModel: ObservableObject {
                 }
             }
         } else {
+            guard connectionState == .connected else {
+                statusMessage = "Conecta la sesión antes de iniciar una grabación"
+                return
+            }
             recordingSaveError = nil
             localRecorder.start()
             isRecording = true
