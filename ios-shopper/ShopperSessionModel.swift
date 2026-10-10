@@ -99,7 +99,7 @@ final class ShopperSessionModel: ObservableObject {
                     // Así la sala y la grabación permanecen vivas durante la transición.
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    guard metaWearables.isStreaming else {
+                    guard await metaWearables.waitUntilStreaming() else {
                         await liveKit.stopRayBanVideo()
                         statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
                         return
@@ -124,7 +124,7 @@ final class ShopperSessionModel: ObservableObject {
             do {
                 try await liveKit.useRayBanVideo()
                 await metaWearables.startRayBanPreview()
-                guard metaWearables.isStreaming else {
+                guard await metaWearables.waitUntilStreaming() else {
                     await liveKit.stopRayBanVideo()
                     statusMessage = "Ray-Ban aún no disponible · continúa iPhone trasera"
                     return
@@ -167,7 +167,7 @@ final class ShopperSessionModel: ObservableObject {
                 } else {
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    if metaWearables.isStreaming {
+                    if await metaWearables.waitUntilStreaming() {
                         statusMessage = metaWearables.status
                     } else {
                         await liveKit.stopRayBanVideo()
