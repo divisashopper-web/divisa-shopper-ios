@@ -83,6 +83,7 @@ final class ShopperSessionModel: ObservableObject {
             defer { isSwitchingCamera = false }
             do {
                 try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                await localRecorder.transitionRecording(to: .iPhoneBack)
                 await liveKit.stopRayBanVideo()
                 metaWearables.stopRayBanPreview()
                 selectedCamera = .iPhoneBack
@@ -134,6 +135,7 @@ final class ShopperSessionModel: ObservableObject {
                         statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
                         return
                     }
+                    await localRecorder.transitionRecording(to: .rayBanMeta)
                     await liveKit.stopIPhoneCamera()
                     selectedCamera = .rayBanMeta
                     isUsingBackupCamera = false
@@ -162,6 +164,7 @@ final class ShopperSessionModel: ObservableObject {
                     statusMessage = "Ray-Ban aún no disponible · continúa iPhone trasera"
                     return
                 }
+                await localRecorder.transitionRecording(to: .rayBanMeta)
                 await liveKit.stopIPhoneCamera()
                 selectedCamera = .rayBanMeta
                 isUsingBackupCamera = false
@@ -216,6 +219,7 @@ final class ShopperSessionModel: ObservableObject {
                         statusMessage = "Ray-Ban sin video · activando respaldo iPhone…"
                         do {
                             try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                            await localRecorder.transitionRecording(to: .iPhoneBack)
                             selectedCamera = .iPhoneBack
                             preferredCamera = .rayBanMeta
                             isUsingBackupCamera = true
