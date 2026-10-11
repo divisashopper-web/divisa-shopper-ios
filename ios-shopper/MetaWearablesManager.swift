@@ -21,6 +21,7 @@ final class MetaWearablesManager: ObservableObject {
     private var stream: MWDATCamera.Stream?
     private var frameCount = 0
     private var firstFrameTime: CMTime?
+    private var sessionStateTask: Task<Void, Never>?
     private let listenerTokens = ListenerTokenBag()
 
     /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
@@ -43,6 +44,8 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Solicitando permiso Meta…"
         frameCount = 0
         firstFrameTime = nil
+        sessionStateTask?.cancel()
+        sessionStateTask = nil
         // Soltar cualquier sesión anterior antes de volver a reservar la cámara.
         camera?.stop()
         deviceSession?.stop()
@@ -65,14 +68,26 @@ final class MetaWearablesManager: ObservableObject {
             self.deviceSession = session
 
             diagnostic = "Iniciando sesión de gafas…"
+            // Meta recomienda suscribirse ANTES de start() para no perder la
+            // transición inicial. Conservamos además el observador durante toda
+            // la compra para distinguir paused de stopped.
+            let stateStream = session.stateStream()
             try session.start()
-            for await state in session.stateStream() {
+            var sessionStarted = false
+            for await state in stateStream {
                 diagnostic = "Estado de sesión Meta: \(state)"
-                if state == .started { break }
+                if state == .started {
+                    sessionStarted = true
+                    break
+                }
                 if state == .stopped {
                     status = "Meta detuvo la sesión antes de activar la cámara"
                     return
                 }
+            }
+            guard sessionStarted else {
+                status = "Meta no pudo iniciar la sesión con las gafas"
+                return
             }
             diagnostic = "Sesión Meta iniciada · abriendo cámara…"
 
@@ -144,6 +159,31 @@ final class MetaWearablesManager: ObservableObject {
 
             diagnostic = "Solicitando inicio de video Meta (baja resolución)"
             stream.start()
+
+            sessionStateTask?.cancel()
+            sessionStateTask = Task { [weak self, weak session] in
+                guard let session else { return }
+                for await state in session.stateStream() {
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run {
+                        guard let self else { return }
+                        switch state {
+                        case .paused:
+                            self.diagnostic = "Sesión Meta pausada · esperando reanudación"
+                        case .started:
+                            if self.hasReceivedFrame {
+                                self.diagnostic = "Sesión Meta activa · video disponible"
+                            }
+                        case .stopped:
+                            self.diagnostic = "Sesión Meta detenida · se requiere nueva sesión"
+                            self.isStreaming = false
+                            self.onStreamingChanged?(false)
+                        default:
+                            break
+                        }
+                    }
+                }
+            }
         } catch {
             diagnostic = "Error de inicio Meta: \(error.localizedDescription)"
             status = diagnostic
@@ -177,6 +217,8 @@ final class MetaWearablesManager: ObservableObject {
 
     func stopRayBanPreview() {
         listenerTokens.clear()
+        sessionStateTask?.cancel()
+        sessionStateTask = nil
         camera?.stop()
         deviceSession?.stop()
         stream = nil
