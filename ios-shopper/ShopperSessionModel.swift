@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 
 @MainActor
 final class ShopperSessionModel: ObservableObject {
@@ -22,6 +23,8 @@ final class ShopperSessionModel: ObservableObject {
     @Published var isEndingSession = false
     @Published var recordingSaveError: String?
     @Published var isSwitchingCamera = false
+    @Published var rayBanPreviewImage: UIImage?
+    @Published var rayBanFramesReady = false
 
     private var recordingTimer: Timer?
 
@@ -39,7 +42,12 @@ final class ShopperSessionModel: ObservableObject {
             self?.liveKit.pushRayBanFrame(buffer)
         }
         metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
+            self?.rayBanFramesReady = true
             self?.localRecorder.append(sampleBuffer)
+        }
+        metaWearables.onPreviewImage = { [weak self] image in
+            self?.rayBanPreviewImage = image
+            self?.rayBanFramesReady = true
         }
         metaWearables.onStreamingChanged = { [weak self] streaming in
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
@@ -99,7 +107,7 @@ final class ShopperSessionModel: ObservableObject {
                     // Así la sala y la grabación permanecen vivas durante la transición.
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    guard await metaWearables.waitUntilStreaming() else {
+                    guard await metaWearables.waitUntilFirstFrame() else {
                         await liveKit.stopRayBanVideo()
                         statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
                         return
@@ -124,7 +132,7 @@ final class ShopperSessionModel: ObservableObject {
             do {
                 try await liveKit.useRayBanVideo()
                 await metaWearables.startRayBanPreview()
-                guard await metaWearables.waitUntilStreaming() else {
+                guard await metaWearables.waitUntilFirstFrame() else {
                     await liveKit.stopRayBanVideo()
                     statusMessage = "Ray-Ban aún no disponible · continúa iPhone trasera"
                     return
@@ -147,6 +155,8 @@ final class ShopperSessionModel: ObservableObject {
         isUsingBackupCamera = false
         isSwitchingCamera = false
         recordingElapsedSeconds = 0
+        rayBanFramesReady = false
+        rayBanPreviewImage = nil
 
         connectionState = .connecting
         statusMessage = "Solicitando acceso a la sesión…"
@@ -167,7 +177,7 @@ final class ShopperSessionModel: ObservableObject {
                 } else {
                     try await liveKit.useRayBanVideo()
                     await metaWearables.startRayBanPreview()
-                    if await metaWearables.waitUntilStreaming() {
+                    if await metaWearables.waitUntilFirstFrame() {
                         statusMessage = metaWearables.status
                     } else {
                         await liveKit.stopRayBanVideo()
@@ -269,6 +279,11 @@ final class ShopperSessionModel: ObservableObject {
         } else {
             guard connectionState == .connected else {
                 statusMessage = "Conecta la sesión antes de iniciar una grabación"
+                return
+            }
+            if selectedCamera == .rayBanMeta && !rayBanFramesReady {
+                statusMessage = "Ray-Ban sin imagen real · grabación bloqueada"
+                recordingSaveError = "Las Ray-Ban todavía no están entregando video. La grabación no se inició."
                 return
             }
             recordingSaveError = nil
