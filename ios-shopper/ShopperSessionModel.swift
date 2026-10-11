@@ -47,7 +47,7 @@ final class ShopperSessionModel: ObservableObject {
         }
         metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
             self?.rayBanFramesReady = true
-            self?.localRecorder.append(sampleBuffer)
+            // Solo grabar fotogramas Meta si esa es la fuente realmente publicada.\n            guard self?.liveKit.activeCameraSource == .rayBanMeta else { return }\n            self?.localRecorder.append(sampleBuffer)
         }
         metaWearables.onPreviewImage = { [weak self] image in
             self?.rayBanPreviewImage = image
