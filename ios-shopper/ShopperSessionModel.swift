@@ -49,7 +49,7 @@ final class ShopperSessionModel: ObservableObject {
             self?.rayBanFramesReady = true
             // Solo grabar fotogramas Meta si esa es la fuente realmente publicada.
             guard self?.liveKit.activeCameraSource == .rayBanMeta else { return }
-            self?.localRecorder.append(sampleBuffer)
+            self?.localRecorder.append(sampleBuffer, source: .rayBanMeta)
         }
         metaWearables.onPreviewImage = { [weak self] image in
             self?.rayBanPreviewImage = image
@@ -333,7 +333,7 @@ final class ShopperSessionModel: ObservableObject {
                 return
             }
             recordingSaveError = nil
-            localRecorder.start()
+            localRecorder.start(source: actualSource)
             isRecording = true
             startRecordingTimer()
             statusMessage = "Grabando localmente · \((liveKit.activeCameraSource ?? selectedCamera).rawValue)"
