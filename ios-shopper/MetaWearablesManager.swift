@@ -19,6 +19,8 @@ final class MetaWearablesManager: ObservableObject {
     private var deviceSession: DeviceSession?
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
+    private var frameCount = 0
+    private var firstFrameTime: CMTime?
     private let listenerTokens = ListenerTokenBag()
 
     /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
@@ -39,6 +41,8 @@ final class MetaWearablesManager: ObservableObject {
         hasReceivedFrame = false
         previewImage = nil
         diagnostic = "Solicitando permiso Meta…"
+        frameCount = 0
+        firstFrameTime = nil
         // Soltar cualquier sesión anterior antes de volver a reservar la cámara.
         camera?.stop()
         deviceSession?.stop()
@@ -86,14 +90,30 @@ final class MetaWearablesManager: ObservableObject {
                     let image = frame.makeUIImage()
                     let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
                     Task { @MainActor in
+                        self?.frameCount += 1
                         if let image {
                             self?.previewImage = image
                             self?.hasReceivedFrame = true
-                            self?.diagnostic = "Primer fotograma recibido"
+                            self?.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self?.frameCount ?? 0)"
                             self?.onPreviewImage?(image)
                         }
                         if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
-                        self?.onVideoSampleBuffer?(frame.sampleBuffer)
+                        // Re-crear el sample buffer con una línea de tiempo local que
+                        // AVAssetWriter pueda guardar de forma fiable. Los timestamps
+                        // nativos de las gafas no pertenecen necesariamente al reloj del iPhone.
+                        if let self, let pixelBuffer {
+                            let pts = CMTime(value: CMTimeValue(self.frameCount), timescale: 24)
+                            var formatDescription: CMVideoFormatDescription?
+                            if CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &formatDescription) == noErr,
+                               let formatDescription {
+                                var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 24), presentationTimeStamp: pts, decodeTimeStamp: .invalid)
+                                var normalized: CMSampleBuffer?
+                                if CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescription: formatDescription, sampleTiming: &timing, sampleBufferOut: &normalized) == noErr,
+                                   let normalized {
+                                    self.onVideoSampleBuffer?(normalized)
+                                }
+                            }
+                        }
                     }
                 }.store(in: listenerTokens)
 
@@ -159,6 +179,8 @@ final class MetaWearablesManager: ObservableObject {
         previewImage = nil
         isStreaming = false
         hasReceivedFrame = false
+        frameCount = 0
+        firstFrameTime = nil
         status = "Ray-Ban sin conectar"
         diagnostic = "Cámara detenida"
     }
