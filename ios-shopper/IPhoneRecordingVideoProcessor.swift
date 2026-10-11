@@ -6,6 +6,7 @@ import LiveKit
 /// y devuelve el mismo frame intacto para que LiveKit lo siga transmitiendo.
 final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked Sendable {
     weak var recorder: LocalVideoRecorder?
+    var source: CameraSource = .iPhoneBack
 
     init(recorder: LocalVideoRecorder) {
         self.recorder = recorder
@@ -21,7 +22,7 @@ final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked 
 
         if let pixelBuffer {
             Task { @MainActor [weak recorder] in
-                recorder?.append(pixelBuffer: pixelBuffer, timeStampNs: frame.timeStampNs)
+                recorder?.append(pixelBuffer: pixelBuffer, timeStampNs: frame.timeStampNs, source: self.source)
             }
         }
         return frame
