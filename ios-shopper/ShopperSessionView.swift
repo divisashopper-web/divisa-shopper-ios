@@ -6,7 +6,8 @@ struct ShopperSessionView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 18) {
+            ScrollView {
+              VStack(spacing: 18) {
                 header
                 metaRegistrationControl
                 activeCameraBadge
@@ -30,9 +31,10 @@ struct ShopperSessionView: View {
                         .font(.footnote.weight(.semibold))
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                Spacer()
+              }
+              .padding()
             }
-            .padding()
+            .scrollIndicators(.visible)
             .navigationBarTitleDisplayMode(.inline)
             .alert("Revisar grabación", isPresented: Binding(
                 get: { session.recordingSaveError != nil },
@@ -84,7 +86,7 @@ struct ShopperSessionView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            Text("Meta: \\(session.metaWearables.diagnostic)")
+            Text("Meta: \(session.metaWearables.diagnostic)")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
