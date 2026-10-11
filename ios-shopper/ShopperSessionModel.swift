@@ -277,6 +277,14 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func toggleRecording() {
+        // La fuente que realmente publica LiveKit manda sobre cualquier estado
+        // transitorio del Picker. Así el respaldo iPhone puede grabar aunque
+        // Ray-Ban haya fallado segundos antes.
+        if let activeSource = liveKit.activeCameraSource,
+           activeSource != selectedCamera {
+            selectedCamera = activeSource
+        }
+
         // Stopping a local recording must remain possible even if LiveKit drops.
         // Only starting a new recording requires an active client session.
         guard !isEndingSession, !isSwitchingCamera else { return }
@@ -297,7 +305,8 @@ final class ShopperSessionModel: ObservableObject {
                 statusMessage = "Conecta la sesión antes de iniciar una grabación"
                 return
             }
-            if selectedCamera == .rayBanMeta && !rayBanFramesReady {
+            let actualSource = liveKit.activeCameraSource ?? selectedCamera
+            if actualSource == .rayBanMeta && !rayBanFramesReady {
                 statusMessage = "Ray-Ban sin imagen real · grabación bloqueada"
                 recordingSaveError = "Las Ray-Ban todavía no están entregando video. La grabación no se inició."
                 return
@@ -306,7 +315,7 @@ final class ShopperSessionModel: ObservableObject {
             localRecorder.start()
             isRecording = true
             startRecordingTimer()
-            statusMessage = "Grabando localmente · \(selectedCamera.rawValue)"
+            statusMessage = "Grabando localmente · \((liveKit.activeCameraSource ?? selectedCamera).rawValue)"
         }
     }
 }
