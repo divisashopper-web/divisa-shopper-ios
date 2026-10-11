@@ -16,7 +16,7 @@ final class LocalVideoRecorder: ObservableObject {
     private var startTime: CMTime?
     private var audioInput: AVAssetWriterInput?
     private let audioCapture = LocalAudioCapture()
-    private var recordingWallClock: Date?
+    private var recordingWallClock: Date?\n    private var lastVideoPTS: CMTime?\n    private var recordingTimeOffset: CMTime = .zero
 
     init() {
         refreshRecordings()
@@ -241,3 +241,4 @@ final class LocalVideoRecorder: ObservableObject {
         refreshRecordings()
     }
 }
+\n\nprivate extension CMSampleBuffer {\n    func copyWithTimeOffset(_ offset: CMTime) -> CMSampleBuffer? {\n        var count: CMItemCount = 0\n        guard CMSampleBufferGetSampleTimingInfoArray(self, entryCount: 0, arrayToFill: nil, entriesNeededOut: &count) == noErr, count > 0 else { return nil }\n        var timing = Array(repeating: CMSampleTimingInfo(), count: count)\n        guard CMSampleBufferGetSampleTimingInfoArray(self, entryCount: count, arrayToFill: &timing, entriesNeededOut: &count) == noErr else { return nil }\n        for index in timing.indices {\n            if timing[index].presentationTimeStamp.isValid { timing[index].presentationTimeStamp = CMTimeAdd(timing[index].presentationTimeStamp, offset) }\n            if timing[index].decodeTimeStamp.isValid { timing[index].decodeTimeStamp = CMTimeAdd(timing[index].decodeTimeStamp, offset) }\n        }\n        var copy: CMSampleBuffer?\n        guard CMSampleBufferCreateCopyWithNewTiming(allocator: kCFAllocatorDefault, sampleBuffer: self, sampleTimingEntryCount: count, sampleTimingArray: &timing, sampleBufferOut: &copy) == noErr else { return nil }\n        return copy\n    }\n}\n
