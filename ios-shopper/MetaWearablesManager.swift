@@ -11,6 +11,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
     @Published private(set) var hasReceivedFrame = false
+    @Published private(set) var diagnostic = "Cámara no iniciada"
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -37,6 +38,14 @@ final class MetaWearablesManager: ObservableObject {
     func startRayBanPreview() async {
         hasReceivedFrame = false
         previewImage = nil
+        diagnostic = "Solicitando permiso Meta…"
+        // Soltar cualquier sesión anterior antes de volver a reservar la cámara.
+        camera?.stop()
+        deviceSession?.stop()
+        stream = nil
+        camera = nil
+        deviceSession = nil
+        listenerTokens.clear()
         do {
             if try await wearables.checkPermissionStatus(.camera) != .granted {
                 let permission = try await wearables.requestPermission(.camera)
@@ -46,10 +55,12 @@ final class MetaWearablesManager: ObservableObject {
                 }
             }
 
+            diagnostic = "Permiso concedido · creando sesión Meta"
             let selector = AutoDeviceSelector(wearables: wearables)
             let session = try wearables.createSession(deviceSelector: selector)
             self.deviceSession = session
 
+            diagnostic = "Iniciando sesión de gafas…"
             try session.start()
             for await state in session.stateStream() {
                 if state == .started { break }
@@ -57,7 +68,7 @@ final class MetaWearablesManager: ObservableObject {
 
             let config = StreamConfiguration(
                 videoCodec: .raw,
-                resolution: .medium,
+                resolution: .low,
                 frameRate: 24
             )
 
@@ -66,6 +77,7 @@ final class MetaWearablesManager: ObservableObject {
                 return
             }
 
+            diagnostic = "Cámara Meta asignada · esperando fotogramas"
             self.camera = camera
             let stream = camera.stream
             self.stream = stream
@@ -77,6 +89,7 @@ final class MetaWearablesManager: ObservableObject {
                         if let image {
                             self?.previewImage = image
                             self?.hasReceivedFrame = true
+                            self?.diagnostic = "Primer fotograma recibido"
                             self?.onPreviewImage?(image)
                         }
                         if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
@@ -96,9 +109,18 @@ final class MetaWearablesManager: ObservableObject {
                 }
             .store(in: listenerTokens)
 
+            stream.errorPublisher.listen { [weak self] error in
+                Task { @MainActor in
+                    self?.diagnostic = "Error SDK Meta: \(error.localizedDescription)"
+                    self?.status = self?.diagnostic ?? "Error SDK Meta"
+                }
+            }.store(in: listenerTokens)
+
+            diagnostic = "Solicitando inicio de video Meta (baja resolución)"
             stream.start()
         } catch {
-            status = "Error Ray-Ban: \(error.localizedDescription)"
+            diagnostic = "Error de inicio Meta: \(error.localizedDescription)"
+            status = diagnostic
         }
     }
 
@@ -138,5 +160,6 @@ final class MetaWearablesManager: ObservableObject {
         isStreaming = false
         hasReceivedFrame = false
         status = "Ray-Ban sin conectar"
+        diagnostic = "Cámara detenida"
     }
 }
