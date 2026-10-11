@@ -99,10 +99,10 @@ final class ShopperSessionModel: ObservableObject {
     func selectCamera(_ source: CameraSource) {
         guard !isSwitchingCamera && !isEndingSession else { return }
         preferredCamera = source
-        selectedCamera = source
-        isUsingBackupCamera = false
 
         guard connectionState == .connected else {
+            selectedCamera = source
+            isUsingBackupCamera = false
             statusMessage = "Fuente preparada: \(source.rawValue)"
             return
         }
@@ -118,6 +118,8 @@ final class ShopperSessionModel: ObservableObject {
                     // Cerrar siempre la ruta Meta: puede existir una sesión aunque ya no marque streaming.
                     await liveKit.stopRayBanVideo()
                     metaWearables.stopRayBanPreview()
+                    selectedCamera = source
+                    isUsingBackupCamera = false
                     statusMessage = isRecording
                         ? "Grabando · \(source.rawValue) activa"
                         : "Transmitiendo: \(source.rawValue)"
@@ -128,10 +130,13 @@ final class ShopperSessionModel: ObservableObject {
                     await metaWearables.startRayBanPreview()
                     guard await metaWearables.waitUntilFirstFrame() else {
                         await liveKit.stopRayBanVideo()
+                        metaWearables.stopRayBanPreview()
                         statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
                         return
                     }
                     await liveKit.stopIPhoneCamera()
+                    selectedCamera = .rayBanMeta
+                    isUsingBackupCamera = false
                     statusMessage = isRecording
                         ? "Grabando · Ray-Ban Meta activa"
                         : metaWearables.status
@@ -153,6 +158,7 @@ final class ShopperSessionModel: ObservableObject {
                 await metaWearables.startRayBanPreview()
                 guard await metaWearables.waitUntilFirstFrame() else {
                     await liveKit.stopRayBanVideo()
+                    metaWearables.stopRayBanPreview()
                     statusMessage = "Ray-Ban aún no disponible · continúa iPhone trasera"
                     return
                 }
@@ -206,6 +212,7 @@ final class ShopperSessionModel: ObservableObject {
                         }
                     } catch {
                         await liveKit.stopRayBanVideo()
+                        metaWearables.stopRayBanPreview()
                         statusMessage = "Ray-Ban sin video · activando respaldo iPhone…"
                         do {
                             try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
