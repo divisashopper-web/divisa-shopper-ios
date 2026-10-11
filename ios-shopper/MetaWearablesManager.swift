@@ -67,8 +67,14 @@ final class MetaWearablesManager: ObservableObject {
             diagnostic = "Iniciando sesión de gafas…"
             try session.start()
             for await state in session.stateStream() {
+                diagnostic = "Estado de sesión Meta: \(state)"
                 if state == .started { break }
+                if state == .stopped {
+                    status = "Meta detuvo la sesión antes de activar la cámara"
+                    return
+                }
             }
+            diagnostic = "Sesión Meta iniciada · abriendo cámara…"
 
             let config = StreamConfiguration(
                 videoCodec: .raw,
