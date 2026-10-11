@@ -293,11 +293,6 @@ final class ShopperSessionModel: ObservableObject {
         // La fuente que realmente publica LiveKit manda sobre cualquier estado
         // transitorio del Picker. Así el respaldo iPhone puede grabar aunque
         // Ray-Ban haya fallado segundos antes.
-        if let activeSource = liveKit.activeCameraSource,
-           activeSource != selectedCamera {
-            selectedCamera = activeSource
-        }
-
         // Stopping a local recording must remain possible even if LiveKit drops.
         // Only starting a new recording requires an active client session.
         guard !isEndingSession, !isSwitchingCamera else { return }
