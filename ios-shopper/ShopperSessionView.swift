@@ -8,6 +8,7 @@ struct ShopperSessionView: View {
         NavigationStack {
             VStack(spacing: 18) {
                 header
+                metaRegistrationControl
                 activeCameraBadge
                 sessionSafetySummary
                 shopperCameraStage
@@ -71,6 +72,22 @@ struct ShopperSessionView: View {
         case .connecting, .reconnecting: return "arrow.triangle.2.circlepath"
         case .connected: return "checkmark.circle.fill"
         case .disconnected: return "wifi.slash"
+        }
+    }
+
+    private var metaRegistrationControl: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Button {
+                Task { await session.metaWearables.registerGlasses() }
+            } label: {
+                Label("Conectar Ray-Ban con Meta AI", systemImage: "eyeglasses")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            Text("Meta: \\(session.metaWearables.diagnostic)")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
