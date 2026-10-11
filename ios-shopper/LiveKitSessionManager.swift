@@ -143,7 +143,10 @@ final class LiveKitSessionManager: ObservableObject {
         localCameraTrack = nil
         localCameraPublication = nil
         iPhoneRecordingProcessor = nil
-        activeCameraSource = nil
+        // Ray-Ban puede estar publicada ya; retirar iPhone no debe borrar esa fuente activa.
+        if activeCameraSource == .iPhoneBack || activeCameraSource == .iPhoneFront {
+            activeCameraSource = nil
+        }
     }
 
     func disconnect() async {
