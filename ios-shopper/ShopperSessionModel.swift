@@ -1,6 +1,10 @@
 import Foundation
 import UIKit
 
+private enum CameraSourceError: Error {
+    case rayBanNoFrames
+}
+
 @MainActor
 final class ShopperSessionModel: ObservableObject {
     enum ConnectionState: String {
@@ -175,21 +179,33 @@ final class ShopperSessionModel: ObservableObject {
                     try await liveKit.useIPhoneCamera(selectedCamera, recorder: localRecorder)
                     statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
                 } else {
-                    try await liveKit.useRayBanVideo()
-                    await metaWearables.startRayBanPreview()
-                    if await metaWearables.waitUntilFirstFrame() {
-                        statusMessage = metaWearables.status
-                    } else {
+                    // La cámara Ray-Ban es una fuente opcional: un fallo del SDK Meta
+                    // nunca debe tumbar una sala LiveKit que ya está conectada.
+                    do {
+                        try await liveKit.useRayBanVideo()
+                        await metaWearables.startRayBanPreview()
+                        if await metaWearables.waitUntilFirstFrame() {
+                            statusMessage = metaWearables.status
+                        } else {
+                            throw CameraSourceError.rayBanNoFrames
+                        }
+                    } catch {
                         await liveKit.stopRayBanVideo()
-                        statusMessage = "Ray-Ban no disponible · activando respaldo iPhone…"
-                        try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
-                        selectedCamera = .iPhoneBack
-                        preferredCamera = .rayBanMeta
-                        isUsingBackupCamera = true
-                        statusMessage = "Sesión conectada · respaldo iPhone trasera activo"
+                        statusMessage = "Ray-Ban sin video · activando respaldo iPhone…"
+                        do {
+                            try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                            selectedCamera = .iPhoneBack
+                            preferredCamera = .rayBanMeta
+                            isUsingBackupCamera = true
+                            statusMessage = "Sesión conectada · respaldo iPhone trasera activo"
+                        } catch {
+                            statusMessage = "Sesión conectada · sin video: \(error.localizedDescription)"
+                        }
                     }
                 }
             } catch {
+                // Solo un fallo real de TOKEN/LIVEKIT/MICRÓFONO debe marcar la llamada
+                // como desconectada. Los fallos de cámara se aíslan arriba.
                 connectionState = .disconnected
                 statusMessage = "No se pudo conectar: \(error.localizedDescription)"
             }
