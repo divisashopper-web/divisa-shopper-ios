@@ -56,6 +56,15 @@ final class ShopperSessionModel: ObservableObject {
         metaWearables.onStreamingChanged = { [weak self] streaming in
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
                   self.connectionState == .connected else { return }
+
+            // El SDK puede publicar estados transitorios antes de entregar el
+            // primer fotograma. No abandonar Ray-Ban por un falso "no streaming".
+            // startSession/selectCamera ya esperan el primer frame y aplican
+            // respaldo si realmente no llega.
+            guard self.metaWearables.hasReceivedFrame else { return }
+
+            // Si una Ray-Ban que YA estaba entregando video se corta durante la
+            // compra, entonces sí activar inmediatamente la cámara de respaldo.
             self.fallbackToIPhoneCamera()
         }
     }
