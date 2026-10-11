@@ -10,6 +10,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var previewImage: UIImage?
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
+    @Published private(set) var hasReceivedFrame = false
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -23,6 +24,7 @@ final class MetaWearablesManager: ObservableObject {
     var onPixelBuffer: ((CVPixelBuffer) -> Void)?
     var onVideoSampleBuffer: ((CMSampleBuffer) -> Void)?
     var onStreamingChanged: ((Bool) -> Void)?
+    var onPreviewImage: ((UIImage) -> Void)?
 
     func registerGlasses() async {
         do {
@@ -33,6 +35,8 @@ final class MetaWearablesManager: ObservableObject {
     }
 
     func startRayBanPreview() async {
+        hasReceivedFrame = false
+        previewImage = nil
         do {
             if try await wearables.checkPermissionStatus(.camera) != .granted {
                 let permission = try await wearables.requestPermission(.camera)
@@ -70,7 +74,11 @@ final class MetaWearablesManager: ObservableObject {
                     let image = frame.makeUIImage()
                     let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
                     Task { @MainActor in
-                        if let image { self?.previewImage = image }
+                        if let image {
+                            self?.previewImage = image
+                            self?.hasReceivedFrame = true
+                            self?.onPreviewImage?(image)
+                        }
                         if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
                         self?.onVideoSampleBuffer?(frame.sampleBuffer)
                     }
@@ -94,6 +102,19 @@ final class MetaWearablesManager: ObservableObject {
         }
     }
 
+    /// No considerar Ray-Ban lista solo porque el SDK diga "streaming".
+    /// Para DIVISA SHOPPER la cámara está lista únicamente después de recibir
+    /// al menos un fotograma real.
+    func waitUntilFirstFrame(timeoutSeconds: Double = 12) async -> Bool {
+        let deadline = Date().addingTimeInterval(timeoutSeconds)
+        while Date() < deadline {
+            if hasReceivedFrame { return true }
+            try? await Task.sleep(for: .milliseconds(250))
+            if Task.isCancelled { return false }
+        }
+        return hasReceivedFrame
+    }
+
     /// Espera el estado real del stream antes de decidir si usar el respaldo.
     /// Evita interpretar como fallo el tiempo normal de conexión de las gafas.
     func waitUntilStreaming(timeoutSeconds: Double = 12) async -> Bool {
@@ -115,6 +136,7 @@ final class MetaWearablesManager: ObservableObject {
         deviceSession = nil
         previewImage = nil
         isStreaming = false
+        hasReceivedFrame = false
         status = "Ray-Ban sin conectar"
     }
 }
