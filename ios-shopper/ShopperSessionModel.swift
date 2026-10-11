@@ -47,7 +47,9 @@ final class ShopperSessionModel: ObservableObject {
         }
         metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
             self?.rayBanFramesReady = true
-            // Solo grabar fotogramas Meta si esa es la fuente realmente publicada.\n            guard self?.liveKit.activeCameraSource == .rayBanMeta else { return }\n            self?.localRecorder.append(sampleBuffer)
+            // Solo grabar fotogramas Meta si esa es la fuente realmente publicada.
+            guard self?.liveKit.activeCameraSource == .rayBanMeta else { return }
+            self?.localRecorder.append(sampleBuffer)
         }
         metaWearables.onPreviewImage = { [weak self] image in
             self?.rayBanPreviewImage = image
@@ -82,6 +84,7 @@ final class ShopperSessionModel: ObservableObject {
             do {
                 try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
                 await liveKit.stopRayBanVideo()
+                metaWearables.stopRayBanPreview()
                 selectedCamera = .iPhoneBack
                 isUsingBackupCamera = true
                 statusMessage = isRecording
@@ -112,10 +115,9 @@ final class ShopperSessionModel: ObservableObject {
                 case .iPhoneBack, .iPhoneFront:
                     // Publica primero el iPhone; luego retira Ray-Ban para evitar huecos.
                     try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
-                    if metaWearables.isStreaming {
-                        await liveKit.stopRayBanVideo()
-                        metaWearables.stopRayBanPreview()
-                    }
+                    // Cerrar siempre la ruta Meta: puede existir una sesión aunque ya no marque streaming.
+                    await liveKit.stopRayBanVideo()
+                    metaWearables.stopRayBanPreview()
                     statusMessage = isRecording
                         ? "Grabando · \(source.rawValue) activa"
                         : "Transmitiendo: \(source.rawValue)"
