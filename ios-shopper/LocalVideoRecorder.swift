@@ -10,6 +10,7 @@ final class LocalVideoRecorder: ObservableObject {
     @Published private(set) var lastRecordingURL: URL?
     @Published private(set) var lastRecordingName: String?
     @Published private(set) var recordings: [URL] = []
+    @Published private(set) var lastRecordingSegments: [URL] = []
 
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
@@ -39,6 +40,7 @@ final class LocalVideoRecorder: ObservableObject {
         sessionIdentifier = UUID().uuidString.prefix(8).description
         segmentNumber = 0
         segmentFiles = []
+        lastRecordingSegments = []
         activeSegmentSource = source
         isRecording = true
         // V1 diagnostic/stability path: record video only.
@@ -262,6 +264,7 @@ final class LocalVideoRecorder: ObservableObject {
         // No independent microphone capture while LiveKit owns call audio.
         await finishCurrentSegment()
         activeSegmentSource = nil
+        lastRecordingSegments = segmentFiles
         recordingWallClock = nil
         refreshRecordings()
     }
