@@ -33,16 +33,24 @@ targets:
       properties:
         CFBundleDisplayName: DIVISA SHOPPER
         MWDAT:
-          AppLinkURLScheme: divisa-shopper
+          AppLinkURLScheme: "divisa-shopper://"
           MetaAppID: "0"
         CFBundleURLTypes:
-          - CFBundleURLSchemes:
+          - CFBundleTypeRole: Editor
+            CFBundleURLName: com.divisashopper.shopper
+            CFBundleURLSchemes:
               - divisa-shopper
         LSApplicationQueriesSchemes:
           - fb-viewapp
         UIBackgroundModes:
+          - processing
+          - bluetooth-central
           - bluetooth-peripheral
           - external-accessory
+        UISupportedExternalAccessoryProtocols:
+          - com.meta.ar.wearable
+        NSBonjourServices:
+          - _bonjour._tcp
         UILaunchScreen: {}
         NSCameraUsageDescription: DIVISA SHOPPER usa la cámara del iPhone como respaldo durante la compra asistida.
         NSMicrophoneUsageDescription: DIVISA SHOPPER usa el micrófono para conversar con el cliente.
