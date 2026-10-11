@@ -84,7 +84,11 @@ final class LiveKitSessionManager: ObservableObject {
         if localCameraTrack == nil {
             let position: AVCaptureDevice.Position = source == .iPhoneFront ? .front : .back
             let options = CameraCaptureOptions(position: position)
-            let processor = recorder.map { IPhoneRecordingVideoProcessor(recorder: $0) }
+            let processor = recorder.map { recorder -> IPhoneRecordingVideoProcessor in
+                let processor = IPhoneRecordingVideoProcessor(recorder: recorder)
+                processor.source = source
+                return processor
+            }
             iPhoneRecordingProcessor = processor
             let track = await LocalVideoTrack.createCameraTrack(
                 name: "iphone-camera",
@@ -101,6 +105,7 @@ final class LiveKitSessionManager: ObservableObject {
         guard let capturer = localCameraTrack?.capturer as? CameraCapturer else { return }
         let desiredPosition: AVCaptureDevice.Position = source == .iPhoneFront ? .front : .back
         _ = try await capturer.set(cameraPosition: desiredPosition)
+        iPhoneRecordingProcessor?.source = source
         activeCameraSource = source
     }
 
