@@ -14,7 +14,7 @@ packages:
     from: 2.0.0
   MetaWearables:
     url: https://github.com/facebook/meta-wearables-dat-ios
-    exactVersion: 0.9.0
+    exactVersion: 1.0.1
 targets:
   DIVISAShopper:
     type: application
