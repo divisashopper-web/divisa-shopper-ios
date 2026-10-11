@@ -17,6 +17,10 @@ final class LocalVideoRecorder: ObservableObject {
     private var audioInput: AVAssetWriterInput?
     private let audioCapture = LocalAudioCapture()
     private var recordingWallClock: Date?
+    private var activeSegmentSource: CameraSource?
+    private var segmentNumber = 0
+    private var segmentFiles: [URL] = []
+    private var sessionIdentifier = ""
 
     init() {
         refreshRecordings()
@@ -32,6 +36,10 @@ final class LocalVideoRecorder: ObservableObject {
         lastRecordingURL = nil
         lastRecordingName = nil
         recordingWallClock = Date()
+        sessionIdentifier = UUID().uuidString.prefix(8).description
+        segmentNumber = 0
+        segmentFiles = []
+        activeSegmentSource = nil
         isRecording = true
         // V1 diagnostic/stability path: record video only.
         // LiveKit owns the active call audio session. Starting a second
@@ -68,6 +76,28 @@ final class LocalVideoRecorder: ObservableObject {
         append(sampleBuffer)
     }
 
+    /// Finaliza el archivo anterior antes de recibir fotogramas de otra cámara.
+    /// LiveKit permanece conectado; solamente cambia el segmento local.
+    func transitionRecording(to source: CameraSource) async {
+        guard isRecording, activeSegmentSource != source else { return }
+        await finishCurrentSegment()
+        activeSegmentSource = source
+    }
+
+    private func finishCurrentSegment() async {
+        input?.markAsFinished()
+        if let writer {
+            await writer.finishWriting()
+            if writer.status == .completed, let url = lastRecordingURL {
+                segmentFiles.append(url)
+            }
+        }
+        writer = nil
+        input = nil
+        audioInput = nil
+        startTime = nil
+    }
+
     func append(_ sampleBuffer: CMSampleBuffer) {
         guard isRecording, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
@@ -80,7 +110,8 @@ final class LocalVideoRecorder: ObservableObject {
                 let recordingsDirectory = try recordingsDirectory()
                 let formatter = DateFormatter()
                 formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
-                let fileName = "DIVISA_SHOPPER_\(formatter.string(from: Date())).mov"
+                segmentNumber += 1
+                let fileName = "DIVISA_SHOPPER_\(formatter.string(from: Date()))_\(sessionIdentifier)_parte\(segmentNumber).mov"
                 let url = recordingsDirectory.appendingPathComponent(fileName)
 
                 let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
@@ -229,14 +260,8 @@ final class LocalVideoRecorder: ObservableObject {
         guard isRecording else { return }
         isRecording = false
         // No independent microphone capture while LiveKit owns call audio.
-        input?.markAsFinished()
-        audioInput?.markAsFinished()
-        if let writer {
-            await writer.finishWriting()
-        }
-        writer = nil
-        input = nil
-        startTime = nil
+        await finishCurrentSegment()
+        activeSegmentSource = nil
         recordingWallClock = nil
         refreshRecordings()
     }
