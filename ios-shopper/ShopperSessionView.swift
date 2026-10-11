@@ -10,6 +10,7 @@ struct ShopperSessionView: View {
                 header
                 activeCameraBadge
                 sessionSafetySummary
+                shopperCameraStage
                 clientStage
                 Text("Video del cliente")
                     .font(.caption.weight(.semibold))
@@ -97,6 +98,46 @@ struct ShopperSessionView: View {
         .font(.caption.weight(.semibold))
         .padding(10)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var shopperCameraStage: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 18)
+                .fill(.black)
+                .aspectRatio(16/9, contentMode: .fit)
+
+            if session.selectedCamera == .rayBanMeta,
+               let image = session.rayBanPreviewImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else if session.selectedCamera == .rayBanMeta {
+                VStack(spacing: 8) {
+                    Image(systemName: "eyeglasses")
+                        .font(.title)
+                    Text("Esperando imagen real de Ray-Ban…")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.white.opacity(0.85))
+            } else {
+                VStack(spacing: 8) {
+                    Image(systemName: "camera.fill")
+                        .font(.title)
+                    Text("Monitor del shopper")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.white.opacity(0.85))
+            }
+        }
+        .overlay(alignment: .topLeading) {
+            Text(session.selectedCamera == .rayBanMeta && session.rayBanFramesReady ? "RAY-BAN · VIDEO REAL" : "CÁMARA DEL SHOPPER")
+                .font(.caption2.weight(.bold))
+                .padding(7)
+                .background(.black.opacity(0.65), in: Capsule())
+                .foregroundStyle(.white)
+                .padding(8)
+        }
     }
 
     private var clientStage: some View {
