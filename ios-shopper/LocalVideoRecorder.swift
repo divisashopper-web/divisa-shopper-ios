@@ -26,7 +26,7 @@ final class LocalVideoRecorder: ObservableObject {
         refreshRecordings()
     }
 
-    func start() {
+    func start(source: CameraSource) {
         guard !isRecording else { return }
         writer = nil
         input = nil
@@ -39,7 +39,7 @@ final class LocalVideoRecorder: ObservableObject {
         sessionIdentifier = UUID().uuidString.prefix(8).description
         segmentNumber = 0
         segmentFiles = []
-        activeSegmentSource = nil
+        activeSegmentSource = source
         isRecording = true
         // V1 diagnostic/stability path: record video only.
         // LiveKit owns the active call audio session. Starting a second
@@ -49,8 +49,8 @@ final class LocalVideoRecorder: ObservableObject {
 
 
     /// Recibe fotogramas crudos de la cámara del iPhone (vía LiveKit VideoProcessor).
-    func append(pixelBuffer: CVPixelBuffer, timeStampNs: Int64) {
-        guard isRecording else { return }
+    func append(pixelBuffer: CVPixelBuffer, timeStampNs: Int64, source: CameraSource) {
+        guard isRecording, activeSegmentSource == source else { return }
 
         var formatDescription: CMVideoFormatDescription?
         guard CMVideoFormatDescriptionCreateForImageBuffer(
@@ -73,7 +73,7 @@ final class LocalVideoRecorder: ObservableObject {
             sampleBufferOut: &sampleBuffer
         ) == noErr, let sampleBuffer else { return }
 
-        append(sampleBuffer)
+        append(sampleBuffer, source: source)
     }
 
     /// Finaliza el archivo anterior antes de recibir fotogramas de otra cámara.
@@ -98,8 +98,8 @@ final class LocalVideoRecorder: ObservableObject {
         startTime = nil
     }
 
-    func append(_ sampleBuffer: CMSampleBuffer) {
-        guard isRecording, CMSampleBufferDataIsReady(sampleBuffer) else { return }
+    func append(_ sampleBuffer: CMSampleBuffer, source: CameraSource) {
+        guard isRecording, activeSegmentSource == source, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
         if writer == nil {
             guard let format = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
