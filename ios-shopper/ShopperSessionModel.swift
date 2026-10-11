@@ -116,6 +116,7 @@ final class ShopperSessionModel: ObservableObject {
                 case .iPhoneBack, .iPhoneFront:
                     // Publica primero el iPhone; luego retira Ray-Ban para evitar huecos.
                     try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
+                    await localRecorder.transitionRecording(to: source)
                     // Cerrar siempre la ruta Meta: puede existir una sesión aunque ya no marque streaming.
                     await liveKit.stopRayBanVideo()
                     metaWearables.stopRayBanPreview()
@@ -209,6 +210,7 @@ final class ShopperSessionModel: ObservableObject {
                         try await liveKit.useRayBanVideo()
                         await metaWearables.startRayBanPreview()
                         if await metaWearables.waitUntilFirstFrame() {
+                            await localRecorder.transitionRecording(to: .rayBanMeta)
                             statusMessage = metaWearables.status
                         } else {
                             throw CameraSourceError.rayBanNoFrames
