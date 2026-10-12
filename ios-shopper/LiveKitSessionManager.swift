@@ -115,11 +115,18 @@ final class LiveKitSessionManager: ObservableObject {
         let track = metaBridge.prepareTrack()
         do {
             metaPublication = try await room.localParticipant.publish(videoTrack: track)
-            activeCameraSource = .rayBanMeta
         } catch {
             metaBridge.reset()
             throw error
         }
+    }
+
+    /// La ruta Meta puede publicarse mientras todavía esperamos el primer frame.
+    /// Solo el coordinador confirma Ray-Ban como fuente activa después de recibir
+    /// imagen real del SDK oficial.
+    func confirmRayBanActive() {
+        guard metaPublication != nil else { return }
+        activeCameraSource = .rayBanMeta
     }
 
     func pushRayBanFrame(_ pixelBuffer: CVPixelBuffer) {
