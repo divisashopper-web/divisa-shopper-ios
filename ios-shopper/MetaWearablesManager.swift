@@ -23,6 +23,7 @@ final class MetaWearablesManager: ObservableObject {
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
     private let listenerTokens = ListenerTokenBag()
+    private var streamGeneration: UInt = 0
 
     /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
     var onPixelBuffer: ((CVPixelBuffer) -> Void)?
@@ -39,6 +40,8 @@ final class MetaWearablesManager: ObservableObject {
     }
 
     func startRayBanPreview() async {
+        streamGeneration &+= 1
+        let generation = streamGeneration
         hasReceivedFrame = false
         previewImage = nil
         diagnostic = "Solicitando permiso Meta…"
@@ -111,7 +114,8 @@ final class MetaWearablesManager: ObservableObject {
                     let image = frame.makeUIImage()
                     let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
                     Task { @MainActor in
-                        self?.frameCount += 1
+                        guard let self, self.streamGeneration == generation else { return }
+                        self.frameCount += 1
                         if let image {
                             self?.previewImage = image
                             self?.hasReceivedFrame = true
@@ -140,10 +144,11 @@ final class MetaWearablesManager: ObservableObject {
 
             stream.statePublisher.listen { [weak self] state in
                     Task { @MainActor in
+                        guard let self, self.streamGeneration == generation else { return }
                         let streaming = state == .streaming
-                        self?.isStreaming = streaming
-                        self?.onStreamingChanged?(streaming)
-                        self?.status = streaming
+                        self.isStreaming = streaming
+                        self.onStreamingChanged?(streaming)
+                        self.status = streaming
                             ? "Ray-Ban transmitiendo"
                             : "Ray-Ban: \(state)"
                     }
@@ -152,8 +157,9 @@ final class MetaWearablesManager: ObservableObject {
 
             stream.errorPublisher.listen { [weak self] error in
                 Task { @MainActor in
-                    self?.diagnostic = "Error SDK Meta: \(error.localizedDescription)"
-                    self?.status = self?.diagnostic ?? "Error SDK Meta"
+                    guard let self, self.streamGeneration == generation else { return }
+                    self.diagnostic = "Error SDK Meta: \(error.localizedDescription)"
+                    self.status = self.diagnostic
                 }
             }.store(in: listenerTokens)
 
@@ -216,6 +222,7 @@ final class MetaWearablesManager: ObservableObject {
     }
 
     func stopRayBanPreview() {
+        streamGeneration &+= 1
         listenerTokens.clear()
         sessionStateTask?.cancel()
         sessionStateTask = nil
