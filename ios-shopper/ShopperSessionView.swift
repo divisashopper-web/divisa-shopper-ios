@@ -24,6 +24,13 @@ struct ShopperSessionView: View {
                 recordingIndicator
                 controls
                 recordingResult
+                if session.selectedCamera == .rayBanMeta || session.preferredCamera == .rayBanMeta {
+                    Text("Diagnóstico Meta: \(session.metaWearables.diagnostic)")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .textSelection(.enabled)
+                }
                 status
                 if session.isEndingSession {
                     ProgressView("Guardando y cerrando sesión…")
