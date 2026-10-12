@@ -70,9 +70,40 @@ final class ShopperSessionModel: ObservableObject {
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
                       !self.isEndingSession else { return }
-                self.fallbackToIPhoneCamera()
+                await self.recoverRayBanStream()
             }
         }
+    }
+
+    private func recoverRayBanStream() async {
+        guard !isSwitchingCamera && !isEndingSession else { return }
+        isSwitchingCamera = true
+        statusMessage = "Ray-Ban en recuperación · la llamada continúa…"
+        defer { isSwitchingCamera = false }
+
+        await liveKit.stopRayBanVideo()
+        metaWearables.stopRayBanPreview()
+        rayBanFramesReady = false
+        rayBanPreviewImage = nil
+
+        do {
+            try await liveKit.useRayBanVideo()
+            await metaWearables.startRayBanPreview()
+            if await metaWearables.waitUntilFirstFrame(timeoutSeconds: 20) {
+                await localRecorder.transitionRecording(to: .rayBanMeta)
+                selectedCamera = .rayBanMeta
+                isUsingBackupCamera = false
+                statusMessage = isRecording ? "Grabando · Ray-Ban recuperada" : "Ray-Ban recuperada · sesión continúa"
+                return
+            }
+        } catch {
+            statusMessage = "Ray-Ban no respondió · preparando cámara de respaldo…"
+        }
+
+        await liveKit.stopRayBanVideo()
+        metaWearables.stopRayBanPreview()
+        isSwitchingCamera = false
+        fallbackToIPhoneCamera()
     }
 
     private func fallbackToIPhoneCamera() {
