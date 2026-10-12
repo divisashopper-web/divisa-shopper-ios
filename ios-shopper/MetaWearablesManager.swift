@@ -11,6 +11,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var isStreaming = false
     @Published private(set) var hasReceivedFrame = false
     @Published private(set) var diagnostic = "Cámara no iniciada"
+    @Published private(set) var pipelineStage = "Meta inactivo"
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -40,6 +41,7 @@ final class MetaWearablesManager: ObservableObject {
     /// Etapa 1 CameraAccess: prepara una DeviceSession y espera confirmación
     /// de Meta. No publica LiveKit, no graba y no toca la cámara del iPhone.
     private func startDeviceSession(generation: UInt) async throws -> DeviceSession? {
+        pipelineStage = "1/5 · Permiso de cámara Meta"
         diagnostic = "Solicitando permiso Meta…"
         if try await wearables.checkPermissionStatus(.camera) != .granted {
             let permission = try await wearables.requestPermission(.camera)
@@ -49,6 +51,7 @@ final class MetaWearablesManager: ObservableObject {
             }
         }
 
+        pipelineStage = "2/5 · Creando DeviceSession"
         diagnostic = "Permiso concedido · creando sesión Meta"
         let selector = AutoDeviceSelector(wearables: wearables)
         let session = try wearables.createSession(deviceSelector: selector)
@@ -61,7 +64,10 @@ final class MetaWearablesManager: ObservableObject {
         for await state in stateStream {
             guard streamGeneration == generation else { return nil }
             diagnostic = "Estado de sesión Meta: \(state)"
-            if state == .started { return session }
+            if state == .started {
+                pipelineStage = "3/5 · DeviceSession iniciada"
+                return session
+            }
             if state == .stopped {
                 status = "Meta detuvo la sesión antes de activar la cámara"
                 return nil
@@ -73,6 +79,7 @@ final class MetaWearablesManager: ObservableObject {
     /// Etapa 2 CameraAccess: abre exclusivamente la cámara de la DeviceSession
     /// ya iniciada y conecta sus publishers oficiales.
     private func startCameraStream(session: DeviceSession, generation: UInt) throws {
+        pipelineStage = "4/5 · Abriendo CameraStream"
         diagnostic = "Sesión Meta iniciada · abriendo cámara…"
         let config = StreamConfiguration(
             videoCodec: .raw,
@@ -98,6 +105,7 @@ final class MetaWearablesManager: ObservableObject {
                 self.frameCount += 1
                 if pixelBuffer != nil {
                     self.hasReceivedFrame = true
+                    self.pipelineStage = "5/5 · Primer frame recibido"
                     self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount)"
                 } else {
                     self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
@@ -233,6 +241,7 @@ final class MetaWearablesManager: ObservableObject {
         frameCount = 0
         firstFrameTime = nil
         status = "Ray-Ban sin conectar"
+        pipelineStage = "Meta inactivo"
         diagnostic = "Cámara detenida"
     }
 }
