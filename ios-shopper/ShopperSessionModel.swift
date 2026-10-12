@@ -29,8 +29,10 @@ final class ShopperSessionModel: ObservableObject {
     @Published var isSwitchingCamera = false
     @Published var rayBanPreviewImage: UIImage?
     @Published var rayBanFramesReady = false
+    @Published var isCameraRecoveryWaiting = false
 
     private var recordingTimer: Timer?
+    private var cameraRecoveryDeadlineTask: Task<Void, Never>?
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
     let liveKit = LiveKitSessionManager()
@@ -95,6 +97,9 @@ final class ShopperSessionModel: ObservableObject {
             if await metaWearables.waitUntilFirstFrame(timeoutSeconds: 20) {
                 liveKit.confirmRayBanActive()
                 await localRecorder.transitionRecording(to: .rayBanMeta)
+                cameraRecoveryDeadlineTask?.cancel()
+                cameraRecoveryDeadlineTask = nil
+                isCameraRecoveryWaiting = false
                 selectedCamera = .rayBanMeta
                 isUsingBackupCamera = false
                 statusMessage = isRecording ? "Grabando · Ray-Ban recuperada" : "Ray-Ban recuperada · sesión continúa"
@@ -106,8 +111,27 @@ final class ShopperSessionModel: ObservableObject {
 
         await liveKit.stopRayBanVideo()
         metaWearables.stopRayBanPreview()
+
+        // No forzar inmediatamente otra cámara. El shopper dispone de una
+        // ventana operativa para acomodar el iPhone, una cámara externa o
+        // volver a intentar Meta. La llamada y el audio siguen conectados.
         isSwitchingCamera = false
-        fallbackToIPhoneCamera()
+        isCameraRecoveryWaiting = true
+        statusMessage = "Estamos cambiando de cámara · la sesión continúa"
+        cameraRecoveryDeadlineTask?.cancel()
+        cameraRecoveryDeadlineTask = Task { [weak self] in
+            // Sumado al intento inicial, mantiene el cambio dentro de un máximo
+            // aproximado de tres minutos sin dejar la sesión abandonada.
+            try? await Task.sleep(for: .seconds(160))
+            guard !Task.isCancelled, let self,
+                  self.connectionState == .connected,
+                  self.selectedCamera == .rayBanMeta,
+                  !self.metaWearables.isStreaming,
+                  !self.isEndingSession,
+                  !self.isSwitchingCamera else { return }
+            self.isCameraRecoveryWaiting = false
+            self.fallbackToIPhoneCamera()
+        }
     }
 
     private func fallbackToIPhoneCamera() {
@@ -133,6 +157,9 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func selectCamera(_ source: CameraSource) {
+        cameraRecoveryDeadlineTask?.cancel()
+        cameraRecoveryDeadlineTask = nil
+        isCameraRecoveryWaiting = false
         guard !isSwitchingCamera && !isEndingSession else { return }
         preferredCamera = source
 
@@ -224,6 +251,9 @@ final class ShopperSessionModel: ObservableObject {
         recordingSaveError = nil
         isUsingBackupCamera = false
         isSwitchingCamera = false
+        isCameraRecoveryWaiting = false
+        cameraRecoveryDeadlineTask?.cancel()
+        cameraRecoveryDeadlineTask = nil
         recordingElapsedSeconds = 0
         rayBanFramesReady = false
         rayBanPreviewImage = nil
@@ -301,6 +331,9 @@ final class ShopperSessionModel: ObservableObject {
                     return
                 }
             }
+            cameraRecoveryDeadlineTask?.cancel()
+            cameraRecoveryDeadlineTask = nil
+            isCameraRecoveryWaiting = false
             metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
             connectionState = .idle
