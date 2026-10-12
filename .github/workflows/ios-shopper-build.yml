@@ -3,7 +3,7 @@ name: iOS Shopper Build
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, meta-official-core-audit]
     paths:
       - "ios-shopper/**"
       - ".github/workflows/ios-shopper-build.yml"
