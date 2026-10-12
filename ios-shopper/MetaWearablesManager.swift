@@ -147,10 +147,15 @@ final class MetaWearablesManager: ObservableObject {
                         guard let self, self.streamGeneration == generation else { return }
                         let streaming = state == .streaming
                         self.isStreaming = streaming
-                        self.onStreamingChanged?(streaming)
-                        self.status = streaming
-                            ? "Ray-Ban transmitiendo"
-                            : "Ray-Ban: \(state)"
+                        // Estados transitorios como starting/waiting/paused no son una
+                        // caída terminal. Solo avisar al coordinador cuando el SDK
+                        // confirma streaming; la sesión Meta notifica .stopped aparte.
+                        if streaming {
+                            self.onStreamingChanged?(true)
+                            self.status = "Ray-Ban transmitiendo"
+                        } else {
+                            self.status = "Ray-Ban: \(state)"
+                        }
                     }
                 }
             .store(in: listenerTokens)
