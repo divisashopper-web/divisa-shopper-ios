@@ -78,6 +78,16 @@ final class LocalVideoRecorder: ObservableObject {
         append(sampleBuffer, source: source)
     }
 
+    /// Protege inmediatamente el material ya capturado cuando una cámara se interrumpe.
+    /// La grabación lógica continúa activa; cuando vuelvan fotogramas de la misma
+    /// fuente se abrirá automáticamente un segmento nuevo.
+    func archiveCurrentSegmentForInterruption() async {
+        guard isRecording else { return }
+        await finishCurrentSegment()
+        lastRecordingSegments = segmentFiles
+        refreshRecordings()
+    }
+
     /// Finaliza el archivo anterior antes de recibir fotogramas de otra cámara.
     /// LiveKit permanece conectado; solamente cambia el segmento local.
     func transitionRecording(to source: CameraSource) async {
