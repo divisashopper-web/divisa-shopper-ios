@@ -38,7 +38,7 @@ final class ShopperSessionModel: ObservableObject {
     let localRecorder = LocalVideoRecorder()
 
     init() {
-        // Meta operates independently in its official app; no SDK frame routing.
+        configureMetaFrameRoutes()
     }
 
     private func configureMetaFrameRoutes() {
@@ -95,7 +95,6 @@ final class ShopperSessionModel: ObservableObject {
 
     func selectCamera(_ source: CameraSource) {
         guard !isSwitchingCamera && !isEndingSession else { return }
-        let source = source == .rayBanMeta ? CameraSource.iPhoneBack : source
         preferredCamera = source
         selectedCamera = source
         isUsingBackupCamera = false
@@ -113,14 +112,27 @@ final class ShopperSessionModel: ObservableObject {
                 case .iPhoneBack, .iPhoneFront:
                     // Publica primero el iPhone; luego retira Ray-Ban para evitar huecos.
                     try await liveKit.useIPhoneCamera(source, recorder: localRecorder)
+                    if metaWearables.isStreaming {
+                        await liveKit.stopRayBanVideo()
+                        metaWearables.stopRayBanPreview()
+                    }
                     statusMessage = isRecording
                         ? "Grabando · \(source.rawValue) activa"
                         : "Transmitiendo: \(source.rawValue)"
                 case .rayBanMeta:
-                    // Meta native recording is never started from DIVISA SHOPPER.
-                    try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
-                    selectedCamera = .iPhoneBack
-                    statusMessage = "Cámara iPhone activa · Meta funciona por separado"
+                    // Arranca primero la nueva fuente y solo después retira el iPhone.
+                    // Así la sala y la grabación permanecen vivas durante la transición.
+                    try await liveKit.useRayBanVideo()
+                    await metaWearables.startRayBanPreview()
+                    guard await metaWearables.waitUntilFirstFrame() else {
+                        await liveKit.stopRayBanVideo()
+                        statusMessage = "Ray-Ban no disponible · continúa cámara iPhone"
+                        return
+                    }
+                    await liveKit.stopIPhoneCamera()
+                    statusMessage = isRecording
+                        ? "Grabando · Ray-Ban Meta activa"
+                        : metaWearables.status
                 }
             } catch {
                 statusMessage = "No se pudo cambiar la cámara: \(error.localizedDescription)"
@@ -176,10 +188,34 @@ final class ShopperSessionModel: ObservableObject {
                 connectionState = .connected
                 isMuted = false
 
-                // The LiveKit session always uses an iPhone camera.
-                if selectedCamera == .rayBanMeta { selectedCamera = .iPhoneBack }
-                try await liveKit.useIPhoneCamera(selectedCamera, recorder: localRecorder)
-                statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
+                if selectedCamera == .iPhoneBack || selectedCamera == .iPhoneFront {
+                    try await liveKit.useIPhoneCamera(selectedCamera, recorder: localRecorder)
+                    statusMessage = "Sesión conectada · \(selectedCamera.rawValue)"
+                } else {
+                    // La cámara Ray-Ban es una fuente opcional: un fallo del SDK Meta
+                    // nunca debe tumbar una sala LiveKit que ya está conectada.
+                    do {
+                        try await liveKit.useRayBanVideo()
+                        await metaWearables.startRayBanPreview()
+                        if await metaWearables.waitUntilFirstFrame() {
+                            statusMessage = metaWearables.status
+                        } else {
+                            throw CameraSourceError.rayBanNoFrames
+                        }
+                    } catch {
+                        await liveKit.stopRayBanVideo()
+                        statusMessage = "Ray-Ban sin video · activando respaldo iPhone…"
+                        do {
+                            try await liveKit.useIPhoneCamera(.iPhoneBack, recorder: localRecorder)
+                            selectedCamera = .iPhoneBack
+                            preferredCamera = .rayBanMeta
+                            isUsingBackupCamera = true
+                            statusMessage = "Sesión conectada · respaldo iPhone trasera activo"
+                        } catch {
+                            statusMessage = "Sesión conectada · sin video: \(error.localizedDescription)"
+                        }
+                    }
+                }
             } catch {
                 // Solo un fallo real de TOKEN/LIVEKIT/MICRÓFONO debe marcar la llamada
                 // como desconectada. Los fallos de cámara se aíslan arriba.
@@ -208,6 +244,7 @@ final class ShopperSessionModel: ObservableObject {
                     return
                 }
             }
+            metaWearables.stopRayBanPreview()
             await liveKit.disconnect()
             connectionState = .idle
             clientVideoAvailable = false
