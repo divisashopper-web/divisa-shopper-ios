@@ -25,6 +25,9 @@ struct ShopperSessionView: View {
                 controls
                 recordingResult
                 if session.selectedCamera == .rayBanMeta || session.preferredCamera == .rayBanMeta {
+                    Text("Etapa Meta: \(session.metaWearables.pipelineStage)")
+                        .font(.caption.weight(.semibold))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text("Diagnóstico Meta: \(session.metaWearables.diagnostic)")
                         .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
