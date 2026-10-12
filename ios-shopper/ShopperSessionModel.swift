@@ -70,6 +70,9 @@ final class ShopperSessionModel: ObservableObject {
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
                       !self.isEndingSession else { return }
+                if self.isRecording {
+                    await self.localRecorder.archiveCurrentSegmentForInterruption()
+                }
                 await self.recoverRayBanStream()
             }
         }
