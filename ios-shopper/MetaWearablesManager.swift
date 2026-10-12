@@ -116,13 +116,19 @@ final class MetaWearablesManager: ObservableObject {
                     Task { @MainActor in
                         guard let self, self.streamGeneration == generation else { return }
                         self.frameCount += 1
+                        // Un frame válido no depende de que UIImage consiga
+                        // renderizarlo: LiveKit utiliza el CVPixelBuffer.
+                        if let pixelBuffer {
+                            self.hasReceivedFrame = true
+                            self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount)"
+                            self.onPixelBuffer?(pixelBuffer)
+                        } else {
+                            self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
+                        }
                         if let image {
                             self.previewImage = image
-                            self.hasReceivedFrame = true
-                            self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount ?? 0)"
                             self.onPreviewImage?(image)
                         }
-                        if let pixelBuffer { self.onPixelBuffer?(pixelBuffer) }
                         // Re-crear el sample buffer con una línea de tiempo local que
                         // AVAssetWriter pueda guardar de forma fiable. Los timestamps
                         // nativos de las gafas no pertenecen necesariamente al reloj del iPhone.
