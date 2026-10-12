@@ -192,6 +192,32 @@ final class MetaWearablesManager: ObservableObject {
         }
     }
 
+    /// Reabre únicamente CameraStream sobre una DeviceSession que continúa
+    /// activa. Es la recuperación preferida antes de destruir/recrear la sesión.
+    func restartCameraStream() async -> Bool {
+        guard let session = deviceSession else {
+            diagnostic = "No existe DeviceSession para reiniciar solamente el video"
+            return false
+        }
+
+        stopCameraStream()
+        streamGeneration &+= 1
+        let generation = streamGeneration
+        hasReceivedFrame = false
+        previewImage = nil
+        frameCount = 0
+        firstFrameTime = nil
+
+        do {
+            try startCameraStream(session: session, generation: generation)
+            return await waitUntilFirstFrame(timeoutSeconds: 20)
+        } catch {
+            diagnostic = "Error reiniciando CameraStream: \(error.localizedDescription)"
+            status = diagnostic
+            return false
+        }
+    }
+
     /// Orquestación de conveniencia: conserva un solo botón en DIVISA SHOPPER,
     /// pero internamente sesión y cámara son dos etapas independientes.
     func startRayBanPreview() async {
