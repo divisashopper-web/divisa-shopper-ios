@@ -111,8 +111,8 @@ final class MetaWearablesManager: ObservableObject {
             self.stream = stream
 
             stream.videoFramePublisher.listen { [weak self] frame in
-                    let image = frame.makeUIImage()
                     let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
+                    let image = frame.makeUIImage()
                     Task { @MainActor in
                         guard let self, self.streamGeneration == generation else { return }
                         self.frameCount += 1
