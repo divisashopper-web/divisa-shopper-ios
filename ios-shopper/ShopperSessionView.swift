@@ -18,6 +18,8 @@ struct ShopperSessionView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                 sourcePicker
+                backupCameraIndicator
+                rayBanRecoveryControl
                 cameraSwitchIndicator
                 recordingIndicator
                 controls
@@ -76,7 +78,7 @@ struct ShopperSessionView: View {
 
     private var activeCameraBadge: some View {
         HStack(spacing: 8) {
-            Image(systemName: "camera.fill")
+            Image(systemName: session.selectedCamera == .rayBanMeta ? "eyeglasses" : "camera.fill")
             Text("Cámara activa: \(session.selectedCamera.rawValue)")
                 .fontWeight(.semibold)
             Spacer()
@@ -106,7 +108,22 @@ struct ShopperSessionView: View {
                 .fill(.black)
                 .aspectRatio(16/9, contentMode: .fit)
 
-                            VStack(spacing: 8) {
+            if session.selectedCamera == .rayBanMeta,
+               let image = session.rayBanPreviewImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(RoundedRectangle(cornerRadius: 18))
+            } else if session.selectedCamera == .rayBanMeta {
+                VStack(spacing: 8) {
+                    Image(systemName: "eyeglasses")
+                        .font(.title)
+                    Text("Esperando imagen real de Ray-Ban…")
+                        .font(.caption.weight(.semibold))
+                }
+                .foregroundStyle(.white.opacity(0.85))
+            } else {
+                VStack(spacing: 8) {
                     Image(systemName: "camera.fill")
                         .font(.title)
                     Text("Monitor del shopper")
@@ -116,7 +133,7 @@ struct ShopperSessionView: View {
             }
         }
         .overlay(alignment: .topLeading) {
-            Text("CÁMARA DEL IPHONE")
+            Text(session.selectedCamera == .rayBanMeta && session.rayBanFramesReady ? "RAY-BAN · VIDEO REAL" : "CÁMARA DEL SHOPPER")
                 .font(.caption2.weight(.bold))
                 .padding(7)
                 .background(.black.opacity(0.65), in: Capsule())
@@ -150,7 +167,7 @@ struct ShopperSessionView: View {
             Text("Cámara del Shopper")
                 .font(.headline)
             Picker("Fuente de cámara", selection: $session.selectedCamera) {
-                ForEach([CameraSource.iPhoneBack, CameraSource.iPhoneFront]) { source in
+                ForEach(CameraSource.allCases) { source in
                     Text(source.rawValue).tag(source)
                 }
             }
@@ -164,6 +181,37 @@ struct ShopperSessionView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+
+    @ViewBuilder
+    private var backupCameraIndicator: some View {
+        if session.isUsingBackupCamera {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("CÁMARA DE RESPALDO ACTIVA").fontWeight(.bold)
+                    Text("Ray-Ban desconectada · usando iPhone trasera").font(.caption)
+                }
+                Spacer()
+            }
+            .font(.subheadline)
+            .padding(10)
+            .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+    }
+
+    @ViewBuilder
+    private var rayBanRecoveryControl: some View {
+        if session.isUsingBackupCamera && session.preferredCamera == .rayBanMeta {
+            Button {
+                session.retryPreferredCamera()
+            } label: {
+                Label("Volver a intentar Ray-Ban", systemImage: "eyeglasses")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(session.connectionState != .connected || session.isEndingSession)
+        }
+    }
 
     @ViewBuilder
     private var cameraSwitchIndicator: some View {
