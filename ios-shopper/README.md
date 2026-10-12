@@ -1,21 +1,16 @@
 # DIVISA SHOPPER — App del Shopper (iOS)
 
-Primera versión nativa de la aplicación privada del Shopper.
+## Arquitectura objetivo vigente
+Meta/Ray-Ban y DIVISA SHOPPER operan independientemente. Meta gestiona de forma nativa las gafas y sus grabaciones; la aplicación privada iOS administra videollamada LiveKit, cámara y audio del iPhone, y videos importados mediante Fotos, Archivos o compartir cuando estén disponibles.
 
-## Arquitectura V1
-- La sesión pertenece al iPhone.
-- LiveKit mantiene la videollamada privada con el cliente.
-- Fuente de video seleccionable: Ray-Ban Meta, cámara trasera del iPhone o cámara frontal.
-- Si las gafas fallan, la llamada continúa y se cambia a iPhone.
-- La app recibe y muestra el video remoto del cliente.
-- La grabación se diseña independiente de la conectividad para que una caída de llamada no implique perder el material local.
+No se asume control de la grabación nativa de Meta, recepción automática de su video ni acceso a archivos internos. El respaldo en iCloud y la publicación al cliente requieren implementación y validación separadas.
 
-## SDKs previstos
-- Meta Wearables Device Access Toolkit 1.0: MWDATCore + MWDATCamera.
-- LiveKit Swift SDK 2.x.
+**Estado:** decisión de arquitectura documentada; migración del código histórico DAT, compilación y pruebas en iPhone pendientes. No considerar esta descripción evidencia de que el cambio ya funciona en el IPA instalado.
 
-## Requisitos actuales de Meta
-El sample público de CameraAccess de Meta requiere iOS 17.2+, Xcode 26.4+ y Swift 6.3+.
+Consultar [ARCHITECTURE.md](ARCHITECTURE.md) para flujo, límites y criterios de aceptación.
 
-## Backend
+## Código histórico
+La integración Meta Wearables DAT y el selector Ray-Ban/iPhone pertenecen a la arquitectura anterior y deben auditarse antes de desactivarse. No borrar ni romper LiveKit durante la migración.
+
+## Backend existente
 Token endpoint: https://divisa-shopper-ios.onrender.com/token
