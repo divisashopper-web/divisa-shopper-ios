@@ -90,12 +90,28 @@ final class ShopperSessionModel: ObservableObject {
         defer { isSwitchingCamera = false }
 
         await liveKit.stopRayBanVideo()
-        metaWearables.stopRayBanPreview()
         rayBanFramesReady = false
         rayBanPreviewImage = nil
 
+        // Primer intento: recuperar solo CameraStream y conservar DeviceSession.
+        // Si Meta sigue conectado, evitamos registrar/recrear toda la sesión.
         do {
             try await liveKit.useRayBanVideo()
+            if await metaWearables.restartCameraStream() {
+                liveKit.confirmRayBanActive()
+                await localRecorder.transitionRecording(to: .rayBanMeta)
+                cameraRecoveryDeadlineTask?.cancel()
+                cameraRecoveryDeadlineTask = nil
+                isCameraRecoveryWaiting = false
+                selectedCamera = .rayBanMeta
+                isUsingBackupCamera = false
+                statusMessage = isRecording ? "Grabando · Ray-Ban recuperada" : "Ray-Ban recuperada · sesión continúa"
+                return
+            }
+
+            // Segundo intento: si la DeviceSession ya no sirve, reconstruir
+            // completamente el motor Meta.
+            metaWearables.stopRayBanPreview()
             await metaWearables.startRayBanPreview()
             if await metaWearables.waitUntilFirstFrame(timeoutSeconds: 20) {
                 liveKit.confirmRayBanActive()
