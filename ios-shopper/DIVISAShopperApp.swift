@@ -22,11 +22,7 @@ struct DIVISAShopperApp: App {
                           components.queryItems?.contains(where: { $0.name == "metaWearablesAction" }) == true
                     else { return }
                     Task {
-                        do {
-                            _ = try await Wearables.shared.handleUrl(url)
-                        } catch {
-                            NSLog("[DIVISA SHOPPER] Error retorno Meta AI: \\(error)")
-                        }
+                        await session.metaWearables.handleRegistrationCallback(url)
                     }
                 }
         }
