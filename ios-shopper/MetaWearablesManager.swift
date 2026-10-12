@@ -31,10 +31,29 @@ final class MetaWearablesManager: ObservableObject {
     var onStreamingChanged: ((Bool) -> Void)?
 
     func registerGlasses() async {
+        pipelineStage = "Registro · abriendo flujo oficial Meta"
+        diagnostic = "Solicitando registro de las Ray-Ban"
         do {
             try await wearables.startRegistration()
+            diagnostic = "Registro Meta iniciado · completa la autorización y vuelve a DIVISA SHOPPER"
         } catch {
+            diagnostic = "Error de registro Meta: \(error.localizedDescription)"
             status = "No se pudo iniciar el registro: \(error.localizedDescription)"
+        }
+    }
+
+    /// Punto único para entregar a Wearables el callback oficial de registro.
+    /// La App solo reenvía la URL; el motor Meta conserva el diagnóstico.
+    func handleRegistrationCallback(_ url: URL) async {
+        pipelineStage = "Registro · procesando retorno Meta"
+        diagnostic = "Procesando autorización de las Ray-Ban…"
+        do {
+            _ = try await wearables.handleUrl(url)
+            diagnostic = "Retorno Meta aceptado · listo para crear DeviceSession"
+            status = "Ray-Ban registrada"
+        } catch {
+            diagnostic = "Error procesando retorno Meta: \(error.localizedDescription)"
+            status = "No se pudo completar el registro Ray-Ban"
         }
     }
 
