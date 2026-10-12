@@ -108,8 +108,20 @@ struct ShopperSessionView: View {
                 .fill(.black)
                 .aspectRatio(16/9, contentMode: .fit)
 
-            if session.selectedCamera == .rayBanMeta,
-               let image = session.rayBanPreviewImage {
+            if session.isCameraRecoveryWaiting {
+                VStack(spacing: 10) {
+                    Text("DIVISA SHOPPER")
+                        .font(.title2.bold())
+                    Text("Estamos cambiando de cámara")
+                        .font(.subheadline.weight(.semibold))
+                    Text("La sesión y el audio continúan")
+                        .font(.caption)
+                }
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white)
+                .padding()
+            } else if session.selectedCamera == .rayBanMeta,
+                      let image = session.rayBanPreviewImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
@@ -215,10 +227,10 @@ struct ShopperSessionView: View {
 
     @ViewBuilder
     private var cameraSwitchIndicator: some View {
-        if session.isSwitchingCamera {
+        if session.isSwitchingCamera || session.isCameraRecoveryWaiting {
             HStack(spacing: 8) {
                 ProgressView()
-                Text("Cambiando cámara…")
+                Text(session.isCameraRecoveryWaiting ? "Estamos cambiando de cámara · audio activo" : "Cambiando cámara…")
                     .fontWeight(.semibold)
                 Spacer()
             }
