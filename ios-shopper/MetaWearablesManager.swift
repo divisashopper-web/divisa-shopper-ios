@@ -14,6 +14,8 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var pipelineStage = "Meta inactivo"
     @Published private(set) var receivedFrameCount = 0
     @Published private(set) var lastFrameReceivedAt: Date?
+    @Published private(set) var framesWithImageBuffer = 0
+    @Published private(set) var framesWithoutImageBuffer = 0
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -127,10 +129,12 @@ final class MetaWearablesManager: ObservableObject {
                 self.receivedFrameCount = self.frameCount
                 self.lastFrameReceivedAt = Date()
                 if pixelBuffer != nil {
+                    self.framesWithImageBuffer += 1
                     self.hasReceivedFrame = true
                     self.pipelineStage = "5/5 · Primer frame recibido"
                     self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount)"
                 } else {
+                    self.framesWithoutImageBuffer += 1
                     self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
                 }
                 if let image { self.previewImage = image }
@@ -231,6 +235,8 @@ final class MetaWearablesManager: ObservableObject {
         previewImage = nil
         frameCount = 0
         receivedFrameCount = 0
+        framesWithImageBuffer = 0
+        framesWithoutImageBuffer = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
         sessionStateTask?.cancel()
@@ -289,6 +295,8 @@ final class MetaWearablesManager: ObservableObject {
         hasReceivedFrame = false
         frameCount = 0
         receivedFrameCount = 0
+        framesWithImageBuffer = 0
+        framesWithoutImageBuffer = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
         pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
