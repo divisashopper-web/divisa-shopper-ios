@@ -287,7 +287,7 @@ final class ShopperSessionModel: ObservableObject {
                 await localRecorder.stop()
                 isRecording = false
                 stopRecordingTimer()
-                guard localRecorder.lastRecordingURL != nil else {
+                guard !localRecorder.lastRecordingSegments.isEmpty else {
                     recordingSaveError = "No se pudo confirmar el archivo. La sesión seguirá conectada para proteger la compra."
                     statusMessage = "Grabación no confirmada · sesión continúa conectada"
                     isEndingSession = false
@@ -351,7 +351,7 @@ final class ShopperSessionModel: ObservableObject {
                 await localRecorder.stop()
                 isRecording = false
                 stopRecordingTimer()
-                if localRecorder.lastRecordingURL != nil {
+                if !localRecorder.lastRecordingSegments.isEmpty {
                     statusMessage = "Grabación local guardada"
                 } else {
                     recordingSaveError = "No se pudo confirmar el archivo de la grabación."
