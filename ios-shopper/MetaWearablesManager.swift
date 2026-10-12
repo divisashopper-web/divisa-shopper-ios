@@ -3,7 +3,6 @@ import MWDATCore
 import MWDATCamera
 import UIKit
 import CoreMedia
-import CoreVideo
 
 @MainActor
 final class MetaWearablesManager: ObservableObject {
@@ -25,11 +24,10 @@ final class MetaWearablesManager: ObservableObject {
     private let listenerTokens = ListenerTokenBag()
     private var streamGeneration: UInt = 0
 
-    /// Fotogramas crudos para LiveKit; la vista previa sigue siendo independiente.
-    var onPixelBuffer: ((CVPixelBuffer) -> Void)?
-    var onVideoSampleBuffer: ((CMSampleBuffer) -> Void)?
+    // Salidas puras del motor Meta. Este tipo no conoce LiveKit ni AVAssetWriter.
+    // El coordinador decide después qué hacer con el frame oficial recibido.
+    var onFrame: ((CMSampleBuffer) -> Void)?
     var onStreamingChanged: ((Bool) -> Void)?
-    var onPreviewImage: ((UIImage) -> Void)?
 
     func registerGlasses() async {
         do {
@@ -118,33 +116,20 @@ final class MetaWearablesManager: ObservableObject {
                         self.frameCount += 1
                         // Un frame válido no depende de que UIImage consiga
                         // renderizarlo: LiveKit utiliza el CVPixelBuffer.
-                        if let pixelBuffer {
+                        if pixelBuffer != nil {
                             self.hasReceivedFrame = true
                             self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount)"
-                            self.onPixelBuffer?(pixelBuffer)
                         } else {
                             self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
                         }
                         if let image {
                             self.previewImage = image
-                            self.onPreviewImage?(image)
                         }
-                        // Re-crear el sample buffer con una línea de tiempo local que
-                        // AVAssetWriter pueda guardar de forma fiable. Los timestamps
-                        // nativos de las gafas no pertenecen necesariamente al reloj del iPhone.
-                        if let pixelBuffer {
-                            let pts = CMTime(value: CMTimeValue(self.frameCount), timescale: 24)
-                            var formatDescription: CMVideoFormatDescription?
-                            if CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &formatDescription) == noErr,
-                               let formatDescription {
-                                var timing = CMSampleTimingInfo(duration: CMTime(value: 1, timescale: 24), presentationTimeStamp: pts, decodeTimeStamp: .invalid)
-                                var normalized: CMSampleBuffer?
-                                if CMSampleBufferCreateReadyWithImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescription: formatDescription, sampleTiming: &timing, sampleBufferOut: &normalized) == noErr,
-                                   let normalized {
-                                    self.onVideoSampleBuffer?(normalized)
-                                }
-                            }
-                        }
+
+                        // Entregar exactamente el frame que produjo CameraAccess.
+                        // La publicación y la grabación pertenecen al adaptador,
+                        // no al motor Meta.
+                        self.onFrame?(frame.sampleBuffer)
                     }
                 }.store(in: listenerTokens)
 
