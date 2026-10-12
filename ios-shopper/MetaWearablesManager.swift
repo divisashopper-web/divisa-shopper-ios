@@ -12,6 +12,8 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var hasReceivedFrame = false
     @Published private(set) var diagnostic = "Cámara no iniciada"
     @Published private(set) var pipelineStage = "Meta inactivo"
+    @Published private(set) var receivedFrameCount = 0
+    @Published private(set) var lastFrameReceivedAt: Date?
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -122,6 +124,8 @@ final class MetaWearablesManager: ObservableObject {
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
                 self.frameCount += 1
+                self.receivedFrameCount = self.frameCount
+                self.lastFrameReceivedAt = Date()
                 if pixelBuffer != nil {
                     self.hasReceivedFrame = true
                     self.pipelineStage = "5/5 · Primer frame recibido"
@@ -226,6 +230,8 @@ final class MetaWearablesManager: ObservableObject {
         hasReceivedFrame = false
         previewImage = nil
         frameCount = 0
+        receivedFrameCount = 0
+        lastFrameReceivedAt = nil
         firstFrameTime = nil
         sessionStateTask?.cancel()
         sessionStateTask = nil
@@ -282,6 +288,8 @@ final class MetaWearablesManager: ObservableObject {
         isStreaming = false
         hasReceivedFrame = false
         frameCount = 0
+        receivedFrameCount = 0
+        lastFrameReceivedAt = nil
         firstFrameTime = nil
         pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
         diagnostic = deviceSession == nil ? "Cámara detenida" : "Video Meta detenido · sesión de gafas conservada"
