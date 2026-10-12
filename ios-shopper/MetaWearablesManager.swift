@@ -16,6 +16,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var lastFrameReceivedAt: Date?
     @Published private(set) var framesWithImageBuffer = 0
     @Published private(set) var framesWithoutImageBuffer = 0
+    @Published private(set) var streamFreezeCount = 0
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -186,7 +187,8 @@ final class MetaWearablesManager: ObservableObject {
                 guard self.isStreaming, self.hasReceivedFrame,
                       let last = self.lastFrameReceivedAt else { continue }
                 if Date().timeIntervalSince(last) >= 2 {
-                    self.diagnostic = "Stream Meta activo pero sin frames por 2 s"
+                    self.streamFreezeCount += 1
+                    self.diagnostic = "Stream Meta activo pero sin frames por 2 s · corte \(self.streamFreezeCount)"
                     self.status = "Ray-Ban sin fotogramas"
                     self.isStreaming = false
                     self.onStreamingChanged?(false)
