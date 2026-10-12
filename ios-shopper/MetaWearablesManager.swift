@@ -117,16 +117,16 @@ final class MetaWearablesManager: ObservableObject {
                         guard let self, self.streamGeneration == generation else { return }
                         self.frameCount += 1
                         if let image {
-                            self?.previewImage = image
-                            self?.hasReceivedFrame = true
-                            self?.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self?.frameCount ?? 0)"
-                            self?.onPreviewImage?(image)
+                            self.previewImage = image
+                            self.hasReceivedFrame = true
+                            self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount ?? 0)"
+                            self.onPreviewImage?(image)
                         }
-                        if let pixelBuffer { self?.onPixelBuffer?(pixelBuffer) }
+                        if let pixelBuffer { self.onPixelBuffer?(pixelBuffer) }
                         // Re-crear el sample buffer con una línea de tiempo local que
                         // AVAssetWriter pueda guardar de forma fiable. Los timestamps
                         // nativos de las gafas no pertenecen necesariamente al reloj del iPhone.
-                        if let self, let pixelBuffer {
+                        if let pixelBuffer {
                             let pts = CMTime(value: CMTimeValue(self.frameCount), timescale: 24)
                             var formatDescription: CMVideoFormatDescription?
                             if CMVideoFormatDescriptionCreateForImageBuffer(allocator: kCFAllocatorDefault, imageBuffer: pixelBuffer, formatDescriptionOut: &formatDescription) == noErr,
