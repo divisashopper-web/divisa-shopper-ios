@@ -244,15 +244,30 @@ final class MetaWearablesManager: ObservableObject {
         return isStreaming
     }
 
-    func stopRayBanPreview() {
+    /// Detiene solo el video. Mantiene DeviceSession disponible para
+    /// reabrir CameraStream sin volver a registrar/reconectar las gafas.
+    func stopCameraStream() {
         streamGeneration &+= 1
         listenerTokens.clear()
-        sessionStateTask?.cancel()
-        sessionStateTask = nil
         camera?.stop()
-        deviceSession?.stop()
         stream = nil
         camera = nil
+        previewImage = nil
+        isStreaming = false
+        hasReceivedFrame = false
+        frameCount = 0
+        firstFrameTime = nil
+        pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
+        diagnostic = deviceSession == nil ? "Cámara detenida" : "Video Meta detenido · sesión de gafas conservada"
+    }
+
+    /// Cierre completo del motor Meta: video + DeviceSession.
+    func stopRayBanPreview() {
+        stopCameraStream()
+        streamGeneration &+= 1
+        sessionStateTask?.cancel()
+        sessionStateTask = nil
+        deviceSession?.stop()
         deviceSession = nil
         previewImage = nil
         isStreaming = false
