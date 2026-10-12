@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import CoreMedia
 
 private enum CameraSourceError: Error {
     case rayBanNoFrames
@@ -44,18 +45,20 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     private func configureMetaFrameRoutes() {
-        metaWearables.onPixelBuffer = { [weak self] buffer in
-            self?.liveKit.pushRayBanFrame(buffer)
-        }
-        metaWearables.onVideoSampleBuffer = { [weak self] sampleBuffer in
-            self?.rayBanFramesReady = true
-            // Solo grabar fotogramas Meta si esa es la fuente realmente publicada.
-            guard self?.liveKit.activeCameraSource == .rayBanMeta else { return }
-            self?.localRecorder.append(sampleBuffer, source: .rayBanMeta)
-        }
-        metaWearables.onPreviewImage = { [weak self] image in
-            self?.rayBanPreviewImage = image
-            self?.rayBanFramesReady = true
+        // Único punto de unión: el motor Meta entrega un frame oficial y el
+        // coordinador decide preview, LiveKit y grabación. El motor iPhone
+        // permanece completamente ajeno al SDK de Meta.
+        metaWearables.onFrame = { [weak self] sampleBuffer in
+            guard let self else { return }
+            self.rayBanFramesReady = true
+            self.rayBanPreviewImage = self.metaWearables.previewImage
+
+            if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
+                self.liveKit.pushRayBanFrame(pixelBuffer)
+            }
+
+            guard self.liveKit.activeCameraSource == .rayBanMeta else { return }
+            self.localRecorder.append(sampleBuffer, source: .rayBanMeta)
         }
         metaWearables.onStreamingChanged = { [weak self] streaming in
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
