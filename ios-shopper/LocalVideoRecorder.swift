@@ -11,6 +11,7 @@ final class LocalVideoRecorder: ObservableObject {
     @Published private(set) var lastRecordingName: String?
     @Published private(set) var recordings: [URL] = []
     @Published private(set) var lastRecordingSegments: [URL] = []
+    @Published private(set) var lastProtectedSegmentURL: URL?
 
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
@@ -41,6 +42,7 @@ final class LocalVideoRecorder: ObservableObject {
         segmentNumber = 0
         segmentFiles = []
         lastRecordingSegments = []
+        lastProtectedSegmentURL = nil
         activeSegmentSource = source
         isRecording = true
         // V1 diagnostic/stability path: record video only.
@@ -81,11 +83,15 @@ final class LocalVideoRecorder: ObservableObject {
     /// Protege inmediatamente el material ya capturado cuando una cámara se interrumpe.
     /// La grabación lógica continúa activa; cuando vuelvan fotogramas de la misma
     /// fuente se abrirá automáticamente un segmento nuevo.
-    func archiveCurrentSegmentForInterruption() async {
-        guard isRecording else { return }
+    @discardableResult
+    func archiveCurrentSegmentForInterruption() async -> Bool {
+        guard isRecording else { return false }
+        let countBefore = segmentFiles.count
         await finishCurrentSegment()
         lastRecordingSegments = segmentFiles
+        lastProtectedSegmentURL = segmentFiles.last
         refreshRecordings()
+        return segmentFiles.count > countBefore
     }
 
     /// Finaliza el archivo anterior antes de recibir fotogramas de otra cámara.
