@@ -26,6 +26,7 @@ final class MetaWearablesManager: ObservableObject {
     private var frameCount = 0
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
+    private var frameWatchdogTask: Task<Void, Never>?
     private let listenerTokens = ListenerTokenBag()
     private var streamGeneration: UInt = 0
 
@@ -171,6 +172,28 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Solicitando inicio de video Meta (baja resolución)"
         stream.start()
         observeSessionLifecycle(session, generation: generation)
+        startFrameWatchdog(generation: generation)
+    }
+
+    /// Igual que CameraAccess, vigila que el stream no quede marcado como
+    /// activo mientras dejan de llegar fotogramas. No toca LiveKit ni iPhone.
+    private func startFrameWatchdog(generation: UInt) {
+        frameWatchdogTask?.cancel()
+        frameWatchdogTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self, self.streamGeneration == generation else { return }
+                guard self.isStreaming, self.hasReceivedFrame,
+                      let last = self.lastFrameReceivedAt else { continue }
+                if Date().timeIntervalSince(last) >= 2 {
+                    self.diagnostic = "Stream Meta activo pero sin frames por 2 s"
+                    self.status = "Ray-Ban sin fotogramas"
+                    self.isStreaming = false
+                    self.onStreamingChanged?(false)
+                    return
+                }
+            }
+        }
     }
 
     private func observeSessionLifecycle(_ session: DeviceSession, generation: UInt) {
@@ -287,6 +310,8 @@ final class MetaWearablesManager: ObservableObject {
     func stopCameraStream() {
         streamGeneration &+= 1
         listenerTokens.clear()
+        frameWatchdogTask?.cancel()
+        frameWatchdogTask = nil
         camera?.stop()
         stream = nil
         camera = nil
