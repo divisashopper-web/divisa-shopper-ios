@@ -21,8 +21,10 @@ final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked 
         }
 
         if let pixelBuffer {
+            let frameSource = source
+            let timeStampNs = frame.timeStampNs
             Task { @MainActor [weak recorder] in
-                recorder?.append(pixelBuffer: pixelBuffer, timeStampNs: frame.timeStampNs, source: self.source)
+                recorder?.append(pixelBuffer: pixelBuffer, timeStampNs: timeStampNs, source: frameSource)
             }
         }
         return frame
