@@ -160,6 +160,8 @@ final class ShopperSessionModel: ObservableObject {
                     // Arranca primero la nueva fuente y solo después retira el iPhone.
                     // Así la sala y la grabación permanecen vivas durante la transición.
                     try await liveKit.useRayBanVideo()
+                    rayBanFramesReady = false
+                    rayBanPreviewImage = nil
                     await metaWearables.startRayBanPreview()
                     guard await metaWearables.waitUntilFirstFrame() else {
                         await liveKit.stopRayBanVideo()
@@ -189,6 +191,8 @@ final class ShopperSessionModel: ObservableObject {
             defer { isSwitchingCamera = false }
             do {
                 try await liveKit.useRayBanVideo()
+                rayBanFramesReady = false
+                rayBanPreviewImage = nil
                 await metaWearables.startRayBanPreview()
                 guard await metaWearables.waitUntilFirstFrame() else {
                     await liveKit.stopRayBanVideo()
