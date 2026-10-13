@@ -181,6 +181,10 @@ struct ShopperSessionView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("PRUEBA 1 · IMAGEN DE LAS GAFAS")
                 .font(.caption.weight(.bold))
+            Button("Registrar gafas con Meta") {
+                Task { await session.metaWearables.registerGlasses() }
+            }
+            .buttonStyle(.bordered)
             Button("Probar imagen Ray-Ban en este iPhone") {
                 Task { await session.metaWearables.startRayBanPreview() }
             }
