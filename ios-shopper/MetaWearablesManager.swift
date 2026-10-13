@@ -77,6 +77,10 @@ final class MetaWearablesManager: ObservableObject {
             }
         }
 
+        // El permiso puede abrir una pantalla externa y tardar. Si el usuario
+        // canceló o inició otra prueba, no crear una sesión obsoleta.
+        guard !Task.isCancelled, streamGeneration == generation else { return nil }
+
         pipelineStage = "2/5 · Creando DeviceSession"
         diagnostic = "Permiso concedido · creando sesión Meta"
         let selector = AutoDeviceSelector(wearables: wearables)
