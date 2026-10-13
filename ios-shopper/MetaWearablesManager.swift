@@ -187,6 +187,10 @@ final class MetaWearablesManager: ObservableObject {
                 guard let self, self.streamGeneration == generation else { return }
                 self.diagnostic = "Error SDK Meta: \(error.localizedDescription)"
                 self.status = self.diagnostic
+                if self.isStreaming {
+                    self.isStreaming = false
+                    self.onStreamingChanged?(false)
+                }
             }
         }.store(in: listenerTokens)
 
