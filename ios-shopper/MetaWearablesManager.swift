@@ -274,6 +274,8 @@ final class MetaWearablesManager: ObservableObject {
         firstFrameTime = nil
         sessionStateTask?.cancel()
         sessionStateTask = nil
+        frameWatchdogTask?.cancel()
+        frameWatchdogTask = nil
         camera?.stop()
         deviceSession?.stop()
         stream = nil
