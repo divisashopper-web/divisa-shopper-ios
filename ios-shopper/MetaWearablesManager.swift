@@ -112,7 +112,9 @@ final class MetaWearablesManager: ObservableObject {
                 return session
             }
             if state == .stopped {
-                status = "Meta detuvo la sesión antes de activar la cámara"
+                if status != "Tiempo de espera agotado al conectar Ray-Ban" {
+                    status = "Meta detuvo la sesión antes de activar la cámara"
+                }
                 return nil
             }
         }
