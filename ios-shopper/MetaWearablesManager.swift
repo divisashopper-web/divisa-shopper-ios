@@ -134,6 +134,10 @@ final class MetaWearablesManager: ObservableObject {
                 if status != "Tiempo de espera agotado al conectar Ray-Ban" {
                     status = "Meta detuvo la sesión antes de activar la cámara"
                 }
+                // Liberar la sesión detenida antes de ofrecer un nuevo intento.
+                if streamGeneration == generation {
+                    deviceSession = nil
+                }
                 return nil
             }
         }
