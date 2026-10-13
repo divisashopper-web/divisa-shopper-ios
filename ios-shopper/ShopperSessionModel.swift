@@ -50,12 +50,16 @@ final class ShopperSessionModel: ObservableObject {
         // permanece completamente ajeno al SDK de Meta.
         metaWearables.onFrame = { [weak self] sampleBuffer in
             guard let self else { return }
+            // El SDK puede entregar muestras HEVC comprimidas sin CVPixelBuffer.
+            // No declarar lista la cámara ni publicar/grabar muestras sin imagen
+            // decodificada; primero se validará la ruta oficial CameraAccess.
+            guard CMSampleBufferDataIsReady(sampleBuffer),
+                  let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+                return
+            }
             self.rayBanFramesReady = true
             self.rayBanPreviewImage = self.metaWearables.previewImage
-
-            if let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) {
-                self.liveKit.pushRayBanFrame(pixelBuffer)
-            }
+            self.liveKit.pushRayBanFrame(pixelBuffer)
 
             guard self.liveKit.activeCameraSource == .rayBanMeta else { return }
             self.localRecorder.append(sampleBuffer, source: .rayBanMeta)
