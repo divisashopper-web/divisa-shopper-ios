@@ -33,6 +33,9 @@ final class ShopperSessionModel: ObservableObject {
     @Published var isCameraRecoveryWaiting = false
 
     private var recordingTimer: Timer?
+    private var lastIPhoneFrameAt: Date?
+    private var iPhoneFrameWatchdogTask: Task<Void, Never>?
+    private var iPhoneSegmentInterrupted = false
     private var cameraRecoveryDeadlineTask: Task<Void, Never>?
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
@@ -42,7 +45,42 @@ final class ShopperSessionModel: ObservableObject {
 
     init() {
         configureMetaFrameRoutes()
+        configureIPhoneFrameWatchdog()
     }
+
+    private func configureIPhoneFrameWatchdog() {
+        liveKit.onIPhoneFrameReceived = { [weak self] source in
+            guard let self, self.liveKit.activeCameraSource == source else { return }
+            self.lastIPhoneFrameAt = Date()
+            if self.iPhoneSegmentInterrupted {
+                self.iPhoneSegmentInterrupted = false
+                self.statusMessage = "Video iPhone recuperado · nuevo segmento al recibir imagen"
+            }
+        }
+        iPhoneFrameWatchdogTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard let self else { return }
+                guard self.isRecording,
+                      let active = self.liveKit.activeCameraSource,
+                      active == .iPhoneBack || active == .iPhoneFront,
+                      let last = self.lastIPhoneFrameAt,
+                      Date().timeIntervalSince(last) >= 4,
+                      !self.iPhoneSegmentInterrupted,
+                      !self.isSwitchingCamera,
+                      !self.isEndingSession else { continue }
+                self.iPhoneSegmentInterrupted = true
+                let protected = await self.localRecorder.archiveCurrentSegmentForInterruption()
+                if protected {
+                    self.statusMessage = "Interrupción iPhone · segmento MOV protegido"
+                } else {
+                    self.recordingSaveError = "No se pudo confirmar el cierre del segmento iPhone interrumpido."
+                    self.statusMessage = "Interrupción iPhone · revisa la grabación"
+                }
+            }
+        }
+    }
+
 
     private func configureMetaFrameRoutes() {
         // Único punto de unión: el motor Meta entrega un frame oficial y el
@@ -284,6 +322,8 @@ final class ShopperSessionModel: ObservableObject {
         cameraRecoveryDeadlineTask?.cancel()
         cameraRecoveryDeadlineTask = nil
         recordingElapsedSeconds = 0
+        lastIPhoneFrameAt = nil
+        iPhoneSegmentInterrupted = false
         rayBanFramesReady = false
         rayBanPreviewImage = nil
 
@@ -440,6 +480,8 @@ final class ShopperSessionModel: ObservableObject {
             }
             recordingSaveError = nil
             localRecorder.start(source: actualSource)
+            iPhoneSegmentInterrupted = false
+            lastIPhoneFrameAt = nil
             isRecording = true
             startRecordingTimer()
             statusMessage = "Grabando localmente · \((liveKit.activeCameraSource ?? selectedCamera).rawValue)"
