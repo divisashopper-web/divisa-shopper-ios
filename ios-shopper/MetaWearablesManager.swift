@@ -114,8 +114,13 @@ final class MetaWearablesManager: ObservableObject {
         )
 
         guard let camera = try session.addCamera(config: config) else {
-            status = "Las gafas están conectadas, pero la cámara no está disponible"
-            return
+            let message = "Las gafas están conectadas, pero la cámara no está disponible"
+            status = message
+            throw NSError(
+                domain: "DIVISAShopper.MetaCamera",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: message]
+            )
         }
 
         self.camera = camera
