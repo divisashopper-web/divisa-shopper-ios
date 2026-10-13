@@ -227,6 +227,11 @@ final class MetaWearablesManager: ObservableObject {
                     switch state {
                     case .paused:
                         self.diagnostic = "Sesión Meta pausada · esperando reanudación"
+                        let wasStreaming = self.isStreaming
+                        self.isStreaming = false
+                        if wasStreaming {
+                            self.onStreamingChanged?(false)
+                        }
                     case .started:
                         if self.hasReceivedFrame {
                             self.diagnostic = "Sesión Meta activa · video disponible"
