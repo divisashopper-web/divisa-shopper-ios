@@ -89,3 +89,19 @@ Invariante principal: un fallo, pausa o reinicio de Ray-Ban nunca modifica la im
 | Imagen de espera | Fuera del alcance hasta validar lo anterior | Pospuesto |
 
 **Regla de estados:** «implementado», «compila» y «validado físicamente» son estados distintos. No marcar en verde físico sin evidencia. No tocar SDK oficiales, no fusionar a `main` sin revisión y no consumir intentos de instalación sin comprobar antes compilación y dependencias.
+
+
+## Secuencia oficial Meta DAT 1.0.1 — prueba prioritaria sin LiveKit
+
+Fuente: paquete oficial facebook/meta-wearables-dat-ios, etiqueta 1.0.1; interfaces Swift MWDATCore y MWDATCamera. No sustituir APIs del SDK ni suponer que Bluetooth conectado significa video disponible.
+
+1. **Configuración:** comprobar el proyecto Meta y el `MWDAT.MetaAppID` real. El valor `0` presente en `project.yml` es provisional y debe verificarse antes de probar registro físico; conservar esquema de retorno `divisa-shopper://` y su manejo por la aplicación.
+2. **Registro:** botón `Registrar gafas con Meta` llama `MetaWearablesManager.registerGlasses()` → `Wearables.startRegistration()`; al regresar, `handleRegistrationCallback(_:) ` entrega la URL a `Wearables.handleUrl(_:) `.
+3. **Permisos:** `checkPermissionStatus(.camera)`; si no concedido, `requestPermission(.camera)`. Si se rechaza, informar y detener sin arrancar cámara.
+4. **Sesión del dispositivo:** `AutoDeviceSelector(wearables:)`, `createSession(deviceSelector:)`, `session.start()` y esperar `.started` desde `stateStream()`. No abrir cámara antes de este estado.
+5. **Cámara:** `session.addCamera(config: StreamConfiguration(videoCodec: .raw, resolution: .low, frameRate: 24))`; observar `videoFramePublisher`, `statePublisher`, `errorPublisher`, luego `stream.start()`.
+6. **Imagen real:** usar `VideoFrame.makeUIImage()` para vista previa local, contar imágenes visibles por separado de `CMSampleBufferGetImageBuffer`. Los frames con pixel buffer y datos listos son los únicos candidatos a grabación/publicación; la vista previa puede tener un resultado distinto.
+7. **Ciclo de vida:** cancelar listeners, watchdog y tareas previas al reiniciar; `stopCameraStream()` conserva `DeviceSession` cuando corresponda; `stopRayBanPreview()` detiene todo. No declarar éxito por estado `.streaming` sin imagen.
+8. **Después de la prueba:** solo cuando aparezca imagen real en el iPhone, integrar progresivamente LiveKit, grabación MOV segmentada y recuperación/fallback. Cada fase requiere compilación y comprobación separada.
+
+**Puerta de salida:** compilación del simulador no demuestra autorización Meta, conexión Bluetooth, frames reales ni reproducción MOV. No gastar una de las diez instalaciones físicas restantes sin revisar antes configuración Meta y compilación.
