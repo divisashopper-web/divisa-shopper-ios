@@ -112,6 +112,12 @@ final class MetaWearablesManager: ObservableObject {
                 diagnostic = "Estado de sesión Meta: \(state)"
             }
             if state == .started {
+                // Una confirmación tardía no debe reactivar una sesión
+                // que ya superó el límite de espera de conexión.
+                guard status != "Tiempo de espera agotado al conectar Ray-Ban" else {
+                    session.stop()
+                    return nil
+                }
                 pipelineStage = "3/5 · DeviceSession iniciada"
                 return session
             }
