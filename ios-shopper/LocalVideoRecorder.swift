@@ -13,6 +13,7 @@ final class LocalVideoRecorder: ObservableObject {
     @Published private(set) var lastRecordingSegments: [URL] = []
     @Published private(set) var lastProtectedSegmentURL: URL?
 
+    private var isFinalizingSegment = false
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
     private var startTime: CMTime?
@@ -54,7 +55,7 @@ final class LocalVideoRecorder: ObservableObject {
 
     /// Recibe fotogramas crudos de la cámara del iPhone (vía LiveKit VideoProcessor).
     func append(pixelBuffer: CVPixelBuffer, timeStampNs: Int64, source: CameraSource) {
-        guard isRecording, activeSegmentSource == source else { return }
+        guard isRecording, !isFinalizingSegment, activeSegmentSource == source else { return }
 
         var formatDescription: CMVideoFormatDescription?
         guard CMVideoFormatDescriptionCreateForImageBuffer(
@@ -103,6 +104,9 @@ final class LocalVideoRecorder: ObservableObject {
     }
 
     private func finishCurrentSegment() async {
+        guard !isFinalizingSegment else { return }
+        isFinalizingSegment = true
+        defer { isFinalizingSegment = false }
         input?.markAsFinished()
         if let writer {
             await writer.finishWriting()
@@ -117,7 +121,7 @@ final class LocalVideoRecorder: ObservableObject {
     }
 
     func append(_ sampleBuffer: CMSampleBuffer, source: CameraSource) {
-        guard isRecording, activeSegmentSource == source, CMSampleBufferDataIsReady(sampleBuffer) else { return }
+        guard isRecording, !isFinalizingSegment, activeSegmentSource == source, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
         if writer == nil {
             guard let format = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
