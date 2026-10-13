@@ -16,6 +16,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var lastFrameReceivedAt: Date?
     @Published private(set) var framesWithImageBuffer = 0
     @Published private(set) var framesWithoutImageBuffer = 0
+    @Published private(set) var previewImageCount = 0
     @Published private(set) var streamFreezeCount = 0
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
@@ -141,7 +142,11 @@ final class MetaWearablesManager: ObservableObject {
                     self.framesWithoutImageBuffer += 1
                     self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
                 }
-                if let image { self.previewImage = image }
+                if let image {
+                    self.previewImage = image
+                    self.previewImageCount += 1
+                    self.pipelineStage = "5/5 · Imagen visible recibida"
+                }
                 self.onFrame?(frame.sampleBuffer)
             }
         }.store(in: listenerTokens)
@@ -264,6 +269,7 @@ final class MetaWearablesManager: ObservableObject {
         receivedFrameCount = 0
         framesWithImageBuffer = 0
         framesWithoutImageBuffer = 0
+        previewImageCount = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
         sessionStateTask?.cancel()
