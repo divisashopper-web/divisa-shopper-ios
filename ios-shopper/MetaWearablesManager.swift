@@ -88,7 +88,7 @@ final class MetaWearablesManager: ObservableObject {
         try session.start()
 
         for await state in stateStream {
-            guard streamGeneration == generation else { return nil }
+            guard !Task.isCancelled, streamGeneration == generation else { return nil }
             diagnostic = "Estado de sesión Meta: \(state)"
             if state == .started {
                 pipelineStage = "3/5 · DeviceSession iniciada"
