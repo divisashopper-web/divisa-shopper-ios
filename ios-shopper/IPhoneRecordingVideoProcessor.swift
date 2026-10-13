@@ -7,6 +7,7 @@ import LiveKit
 final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked Sendable {
     weak var recorder: LocalVideoRecorder?
     var source: CameraSource = .iPhoneBack
+    var onFrameReceived: ((CameraSource) -> Void)?
 
     init(recorder: LocalVideoRecorder) {
         self.recorder = recorder
@@ -22,6 +23,7 @@ final class IPhoneRecordingVideoProcessor: NSObject, VideoProcessor, @unchecked 
 
         if let pixelBuffer {
             let frameSource = source
+            onFrameReceived?(frameSource)
             let timeStampNs = frame.timeStampNs
             Task { @MainActor [weak recorder] in
                 recorder?.append(pixelBuffer: pixelBuffer, timeStampNs: timeStampNs, source: frameSource)
