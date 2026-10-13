@@ -204,6 +204,19 @@ struct ShopperSessionView: View {
             }
             Text("Imágenes visibles: \(session.metaWearables.previewImageCount) · Con pixel buffer: \(session.metaWearables.framesWithImageBuffer) · Recibidos: \(session.metaWearables.receivedFrameCount)")
                 .font(.caption2.monospacedDigit())
+            Text(session.metaWearables.pipelineStage)
+                .font(.caption2.weight(.semibold))
+            if session.metaWearables.previewImageCount > 0 &&
+                session.metaWearables.framesWithImageBuffer == 0 {
+                Text("Meta muestra imagen, pero todavía no hay pixel buffer válido para LiveKit/MOV.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            } else if session.metaWearables.framesWithImageBuffer > 0 &&
+                        session.metaWearables.previewImageCount == 0 {
+                Text("Llegan muestras decodificadas, pero makeUIImage aún no produce vista previa.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
             Text(session.metaWearables.diagnostic)
                 .font(.caption2)
                 .textSelection(.enabled)
