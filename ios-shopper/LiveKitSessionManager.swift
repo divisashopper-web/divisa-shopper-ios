@@ -23,6 +23,7 @@ final class LiveKitSessionManager: ObservableObject {
     private var localCameraTrack: LocalVideoTrack?
     private var localCameraPublication: LocalTrackPublication?
     private var iPhoneRecordingProcessor: IPhoneRecordingVideoProcessor?
+    var onIPhoneFrameReceived: ((CameraSource) -> Void)?
     private let metaBridge = MetaToLiveKitBridge()
     private var metaPublication: LocalTrackPublication?
     private lazy var roomObserver = RoomConnectionObserver { [weak self] state in
@@ -87,6 +88,11 @@ final class LiveKitSessionManager: ObservableObject {
             let processor = recorder.map { recorder -> IPhoneRecordingVideoProcessor in
                 let processor = IPhoneRecordingVideoProcessor(recorder: recorder)
                 processor.source = source
+                processor.onFrameReceived = { [weak self] source in
+                    Task { @MainActor [weak self] in
+                        self?.onIPhoneFrameReceived?(source)
+                    }
+                }
                 return processor
             }
             iPhoneRecordingProcessor = processor
