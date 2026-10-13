@@ -64,3 +64,11 @@ Invariante principal: un fallo, pausa o reinicio de Ray-Ban nunca modifica la im
 5. Después, evaluar imagen de espera y tiempos de respaldo según mediciones físicas.
 
 **Nota:** este documento expresa requisitos y arquitectura; no implica que todos estén implementados o validados.
+
+### Verificación adicional de dependencias y grabación (13-10-2026)
+
+- `project.yml` fija **Meta DAT 1.0.1** mediante `exactVersion`. La etiqueta oficial `1.0.1` existe, pero el árbol de esa etiqueta no incluye el ejemplo `samples/CameraAccess` de la rama principal actual. **No copiar APIs del ejemplo actual suponiendo que existen en 1.0.1.**
+- La ruta actual Meta usa `StreamConfiguration(videoCodec: .raw, resolution: .low, frameRate: 24)`. Verificar en compilación y hardware si esa configuración entrega `CMSampleBuffer` con `CVPixelBuffer` utilizable. Si no, investigar decodificación compatible con la versión fijada antes de alterar el puente a LiveKit.
+- `LocalVideoRecorder.finishCurrentSegment()` espera `AVAssetWriter.finishWriting()` y solo registra el segmento si el writer termina con `.completed`. No equivale a verificar reproducción, duración, integridad ni comportamiento ante interrupción abrupta del proceso.
+- El iPhone envía frames al grabador a través de `IPhoneRecordingVideoProcessor`; aún falta watchdog de pérdida de frames, cierre seguro y pruebas de recuperación de segmentos iPhone.
+- **No considerar pruebas completadas** hasta disponer de compilación iOS y resultados en iPhone con Ray-Ban reales. Mantener la pantalla de espera fuera de esta etapa.
