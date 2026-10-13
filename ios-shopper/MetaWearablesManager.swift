@@ -260,7 +260,7 @@ final class MetaWearablesManager: ObservableObject {
         }
 
         stopCameraStream()
-        streamGeneration &+= 1
+        // stopCameraStream ya invalida la generación anterior.
         let generation = streamGeneration
         hasReceivedFrame = false
         previewImage = nil
