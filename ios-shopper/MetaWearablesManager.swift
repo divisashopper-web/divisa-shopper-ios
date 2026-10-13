@@ -168,7 +168,9 @@ final class MetaWearablesManager: ObservableObject {
                     self.onStreamingChanged?(false)
                 }
                 if streaming {
-                    self.onStreamingChanged?(true)
+                    if !wasStreaming {
+                        self.onStreamingChanged?(true)
+                    }
                     self.status = "Ray-Ban transmitiendo"
                     if !self.hasReceivedFrame {
                         self.diagnostic = "Meta indica streaming · esperando primer fotograma"
