@@ -72,3 +72,20 @@ Invariante principal: un fallo, pausa o reinicio de Ray-Ban nunca modifica la im
 - `LocalVideoRecorder.finishCurrentSegment()` espera `AVAssetWriter.finishWriting()` y solo registra el segmento si el writer termina con `.completed`. No equivale a verificar reproducción, duración, integridad ni comportamiento ante interrupción abrupta del proceso.
 - El iPhone envía frames al grabador a través de `IPhoneRecordingVideoProcessor`; aún falta watchdog de pérdida de frames, cierre seguro y pruebas de recuperación de segmentos iPhone.
 - **No considerar pruebas completadas** hasta disponer de compilación iOS y resultados en iPhone con Ray-Ban reales. Mantener la pantalla de espera fuera de esta etapa.
+
+## Puerta de validación antes de consumir intentos de instalación en iPhone
+
+**Presupuesto operativo comunicado: quedan diez intentos.** No generar ni instalar una IPA por cada cambio aislado. La siguiente prueba física debe reunir correcciones verificables y diagnósticos claros.
+
+| Criterio | Evidencia necesaria | Estado |
+| --- | --- | --- |
+| Separación de motores y sala LiveKit | Revisión estática del código | Revisado, no probado en hardware |
+| DAT 1.0.1 compatible | Compilación iOS de rama de auditoría y confirmación de APIs | Pendiente |
+| Video Ray-Ban real | Primer CVPixelBuffer válido, preview visible y contador creciente en iPhone | Pendiente de hardware |
+| Segmentación Meta | MOV finalizado, reproducible y siguiente segmento tras corte | Pendiente de hardware |
+| Segmentación iPhone | Watchdog de frames, cierre confirmado, nuevo segmento tras recuperación | Pendiente de implementación y prueba |
+| Cambio de fuente | Audio/Room LiveKit sin caída, archivo anterior conservado | Pendiente de prueba |
+| Botón flotante | Gris/amarillo/verde fijo/verde intermitente ligados a estados reales | Pendiente |
+| Imagen de espera | Fuera del alcance hasta validar lo anterior | Pospuesto |
+
+**Regla de estados:** «implementado», «compila» y «validado físicamente» son estados distintos. No marcar en verde físico sin evidencia. No tocar SDK oficiales, no fusionar a `main` sin revisión y no consumir intentos de instalación sin comprobar antes compilación y dependencias.
