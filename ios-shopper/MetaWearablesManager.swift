@@ -106,7 +106,11 @@ final class MetaWearablesManager: ObservableObject {
 
         for await state in stateStream {
             guard !Task.isCancelled, streamGeneration == generation else { return nil }
-            diagnostic = "Estado de sesión Meta: \(state)"
+            // No ocultar la causa original cuando el watchdog detiene
+            // la sesión y el SDK publica posteriormente el estado .stopped.
+            if status != "Tiempo de espera agotado al conectar Ray-Ban" {
+                diagnostic = "Estado de sesión Meta: \(state)"
+            }
             if state == .started {
                 pipelineStage = "3/5 · DeviceSession iniciada"
                 return session
