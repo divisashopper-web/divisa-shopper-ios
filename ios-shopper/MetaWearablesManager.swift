@@ -155,7 +155,13 @@ final class MetaWearablesManager: ObservableObject {
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
                 let streaming = state == .streaming
+                let wasStreaming = self.isStreaming
                 self.isStreaming = streaming
+                if wasStreaming && !streaming {
+                    // El SDK dejó de transmitir: cerrar el segmento activo
+                    // antes de intentar recuperar la cámara.
+                    self.onStreamingChanged?(false)
+                }
                 if streaming {
                     self.onStreamingChanged?(true)
                     self.status = "Ray-Ban transmitiendo"
