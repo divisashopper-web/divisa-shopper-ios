@@ -233,8 +233,11 @@ final class MetaWearablesManager: ObservableObject {
                         }
                     case .stopped:
                         self.diagnostic = "Sesión Meta detenida · se requiere nueva sesión"
+                        let wasStreaming = self.isStreaming
                         self.isStreaming = false
-                        self.onStreamingChanged?(false)
+                        if wasStreaming {
+                            self.onStreamingChanged?(false)
+                        }
                     default:
                         break
                     }
