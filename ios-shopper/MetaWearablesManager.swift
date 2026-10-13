@@ -129,8 +129,10 @@ final class MetaWearablesManager: ObservableObject {
                 guard let self, self.streamGeneration == generation else { return }
                 self.frameCount += 1
                 self.receivedFrameCount = self.frameCount
-                self.lastFrameReceivedAt = Date()
-                if pixelBuffer != nil {
+                // El watchdog debe medir la última imagen realmente utilizable,
+                // no cualquier muestra recibida (puede llegar HEVC sin pixel buffer).
+                if pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                    self.lastFrameReceivedAt = Date()
                     self.framesWithImageBuffer += 1
                     self.hasReceivedFrame = true
                     self.pipelineStage = "5/5 · Primer frame recibido"
