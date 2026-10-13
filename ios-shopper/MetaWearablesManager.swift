@@ -91,6 +91,19 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Iniciando sesión de gafas…"
         try session.start()
 
+        // Limitar la espera: si Meta nunca confirma .started, detener
+        // DeviceSession para desbloquear stateStream y mostrar diagnóstico.
+        // El temporizador pertenece a esta generación y se cancela al salir.
+        let startupTimeout = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(30))
+            guard !Task.isCancelled, let self,
+                  self.streamGeneration == generation else { return }
+            self.diagnostic = "Meta no inició DeviceSession en 30 s · revisa conexión y autorización"
+            self.status = "Tiempo de espera agotado al conectar Ray-Ban"
+            session.stop()
+        }
+        defer { startupTimeout.cancel() }
+
         for await state in stateStream {
             guard !Task.isCancelled, streamGeneration == generation else { return nil }
             diagnostic = "Estado de sesión Meta: \(state)"
