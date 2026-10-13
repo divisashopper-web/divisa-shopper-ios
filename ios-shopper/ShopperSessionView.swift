@@ -12,6 +12,7 @@ struct ShopperSessionView: View {
                 activeCameraBadge
                 sessionSafetySummary
                 shopperCameraStage
+                rayBanLocalPreviewTest
                 clientStage
                 Text("Video del cliente")
                     .font(.caption.weight(.semibold))
@@ -172,6 +173,38 @@ struct ShopperSessionView: View {
                 .foregroundStyle(.white)
                 .padding(8)
         }
+    }
+
+    /// Prueba aislada: Meta -> imagen en el iPhone, sin publicar LiveKit ni grabar.
+    /// Úsese antes de consumir una instalación para probar videollamada completa.
+    private var rayBanLocalPreviewTest: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("PRUEBA 1 · IMAGEN DE LAS GAFAS")
+                .font(.caption.weight(.bold))
+            Button("Probar imagen Ray-Ban en este iPhone") {
+                Task { await session.metaWearables.startRayBanPreview() }
+            }
+            .buttonStyle(.bordered)
+            .disabled(session.isSwitchingCamera || session.isEndingSession ||
+                      session.connectionState == .connected)
+            if let image = session.metaWearables.previewImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(maxHeight: 220)
+                    .accessibilityLabel("Imagen local recibida directamente de Ray-Ban")
+            } else {
+                Text("Sin imagen todavía · revisa el diagnóstico Meta")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Text("Fotogramas válidos: \\(session.metaWearables.framesWithImageBuffer) · Recibidos: \\(session.metaWearables.receivedFrameCount)")
+                .font(.caption2.monospacedDigit())
+            Text(session.metaWearables.diagnostic)
+                .font(.caption2)
+                .textSelection(.enabled)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var clientStage: some View {
