@@ -89,7 +89,16 @@ final class MetaWearablesManager: ObservableObject {
 
         let stateStream = session.stateStream()
         diagnostic = "Iniciando sesión de gafas…"
-        try session.start()
+        do {
+            try session.start()
+        } catch {
+            // No dejar una DeviceSession fallida retenida como si estuviera activa.
+            session.stop()
+            if streamGeneration == generation {
+                deviceSession = nil
+            }
+            throw error
+        }
 
         // Limitar la espera: si Meta nunca confirma .started, detener
         // DeviceSession para desbloquear stateStream y mostrar diagnóstico.
