@@ -300,12 +300,14 @@ final class MetaWearablesManager: ObservableObject {
         sessionStateTask = nil
         frameWatchdogTask?.cancel()
         frameWatchdogTask = nil
+        // Primero cancelar las suscripciones: no recibir estados tardíos
+        // mientras se cierran la cámara y la sesión anterior.
+        listenerTokens.clear()
         camera?.stop()
         deviceSession?.stop()
         stream = nil
         camera = nil
         deviceSession = nil
-        listenerTokens.clear()
 
         do {
             guard let session = try await startDeviceSession(generation: generation) else { return }
