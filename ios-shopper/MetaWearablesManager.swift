@@ -317,6 +317,9 @@ final class MetaWearablesManager: ObservableObject {
 
         do {
             guard let session = try await startDeviceSession(generation: generation) else { return }
+            // Una segunda solicitud o un cierre puede invalidar esta operación
+            // mientras el SDK espera autorización o conexión de las gafas.
+            guard !Task.isCancelled, streamGeneration == generation else { return }
             try startCameraStream(session: session, generation: generation)
         } catch {
             diagnostic = "Error de inicio Meta: \(error.localizedDescription)"
