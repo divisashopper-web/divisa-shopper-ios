@@ -9,7 +9,7 @@ struct DIVISAShopperApp: App {
         do {
             try Wearables.configure()
         } catch {
-            NSLog("[DIVISA SHOPPER] Error configurando SDK Meta: \\(error)")
+            NSLog("[DIVISA SHOPPER] Error configurando SDK Meta: \(error)")
         }
     }
 
