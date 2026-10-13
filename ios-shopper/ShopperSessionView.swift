@@ -18,6 +18,7 @@ struct ShopperSessionView: View {
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
                 sourcePicker
+                rayBanFloatingControl
                 backupCameraIndicator
                 rayBanRecoveryControl
                 cameraSwitchIndicator
@@ -190,6 +191,43 @@ struct ShopperSessionView: View {
                 .foregroundStyle(.white.opacity(0.85))
                 .padding()
             }
+        }
+    }
+
+    /// Indicador basado en fotogramas recientes, no solo en Bluetooth.
+    private var rayBanVideoReady: Bool {
+        guard session.metaWearables.isStreaming,
+              session.metaWearables.hasReceivedFrame,
+              session.metaWearables.framesWithImageBuffer > 0,
+              let lastFrame = session.metaWearables.lastFrameReceivedAt else { return false }
+        return Date().timeIntervalSince(lastFrame) < 3
+    }
+
+    private var rayBanFloatingControl: some View {
+        HStack {
+            Spacer()
+            Button {
+                if session.selectedCamera == .rayBanMeta {
+                    session.selectCamera(.iPhoneBack)
+                } else if rayBanVideoReady {
+                    session.selectCamera(.rayBanMeta)
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: "eyeglasses")
+                    Text(session.selectedCamera == .rayBanMeta ? "Volver al iPhone" : rayBanVideoReady ? "Usar Ray-Ban" : "Ray-Ban esperando video")
+                        .font(.caption.weight(.semibold))
+                    Circle()
+                        .fill(rayBanVideoReady ? Color.green : Color.gray)
+                        .frame(width: 10, height: 10)
+                }
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(.regularMaterial, in: Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(session.connectionState != .connected || session.isSwitchingCamera || session.isEndingSession || (session.selectedCamera != .rayBanMeta && !rayBanVideoReady))
+            .accessibilityLabel(rayBanVideoReady ? "Ray-Ban con imagen disponible" : "Ray-Ban sin imagen confirmada")
         }
     }
 
