@@ -105,3 +105,8 @@ Fuente: paquete oficial facebook/meta-wearables-dat-ios, etiqueta 1.0.1; interfa
 8. **Después de la prueba:** solo cuando aparezca imagen real en el iPhone, integrar progresivamente LiveKit, grabación MOV segmentada y recuperación/fallback. Cada fase requiere compilación y comprobación separada.
 
 **Puerta de salida:** compilación del simulador no demuestra autorización Meta, conexión Bluetooth, frames reales ni reproducción MOV. No gastar una de las diez instalaciones físicas restantes sin revisar antes configuración Meta y compilación.
+
+
+### Confirmación oficial: MetaAppID 0 en Developer Mode
+
+La guía oficial de Meta DAT establece que `MWDAT.MetaAppID` vacío, `0` o `$(META_APP_ID)` sin expandir significa **sin ID de producción**: el SDK omite attestation y permite registro de desarrollo si Meta AI tiene Developer Mode habilitado. Por ello **no reemplazar `0` con un identificador inventado** durante la prueba aislada. Para distribución de producción sí configurar MetaAppID, ClientToken y TeamID reales, además del canal de lanzamiento. Referencia: https://github.com/facebook/meta-wearables-dat-ios/blob/main/AGENTS.md (Getting Started / Developer Mode vs Production). La configuración actual de `project.yml` incluye las declaraciones de Bluetooth LE, Bluetooth Classic, Wi-Fi local y esquema de callback; verificar en dispositivo el permiso de Meta AI y el modo desarrollador.
