@@ -41,3 +41,26 @@ Invariante principal: un fallo, pausa o reinicio de Ray-Ban nunca modifica la im
 - Hacer que el motor Meta exponga solamente estado, preview y frames del SDK oficial.
 - Conectar esos outputs mediante un adaptador independiente.
 - Validar primero Meta -> preview local. Solo después validar Meta -> adaptador -> LiveKit y Meta -> adaptador -> grabación.
+
+## Flujo aprobado de DIVISA SHOPPER (13-10-2026)
+
+**DIVISA SHOPPER es la aplicación y contiene la coordinación interna**; no existe un tercer motor ni una aplicación externa denominada «Coordinador».
+
+1. DIVISA SHOPPER abre y mantiene la sala LiveKit. LiveKit puede conectarse sin cámara publicada; el comportamiento predeterminado es publicar la cámara trasera del iPhone.
+2. La aplicación ofrece controles de cámara (iPhone y botón flotante Ray-Ban) y selecciona una fuente de video para la misma sesión sin desconectar audio ni cliente.
+3. El motor iPhone y el motor Meta DAT permanecen independientes. El SDK oficial Meta controla registro, permisos, DeviceSession, Stream y entrega de muestras; LiveKit controla la sala y su audio. No modificar los SDK.
+4. Una muestra de Ray-Ban solo se considera **imagen disponible** cuando existe un fotograma real, listo y decodificado; Bluetooth conectado o StreamState.streaming no bastan.
+5. La grabación local recibe la fuente activa por su propia ruta y **guarda segmentos MOV**. Ante interrupción de Ray-Ban **o iPhone**, debe cerrar y verificar el segmento previo y comenzar otro al recuperarse o cambiar de fuente. Es un requisito obligatorio, pero su implementación y prueba física aún no están completas para ambas cámaras.
+6. Si Ray-Ban se interrumpe, conservar la sala LiveKit, proteger el segmento, intentar recuperar la fuente y, tras un tiempo configurable validado con pruebas reales, usar respaldo iPhone. No asumir duraciones de corte o autonomía de Meta.
+7. Una imagen o video temporal para el cliente durante cortes queda **pospuesto** hasta demostrar primero video Ray-Ban con el SDK oficial y grabación por segmentos confiable.
+8. Estados previstos del botón flotante Ray-Ban: **gris** (no disponible), **amarillo** (detectada/preparando), **verde fijo** (imagen real disponible), **verde intermitente** (fuente Ray-Ban participando en sesión). La grabación local debe tener indicador independiente.
+
+### Orden de implementación y validación
+
+1. Confirmar en hardware Meta -> primer frame decodificado y comparar la versión SDK fijada con el ejemplo oficial CameraAccess.
+2. Verificar y proteger segmentos de ambas cámaras, incluido congelamiento iPhone; comprobar integridad MOV y errores de cierre.
+3. Fortalecer transición y recuperación sin cortar LiveKit/audio.
+4. Terminar controles flotantes y estados verídicos.
+5. Después, evaluar imagen de espera y tiempos de respaldo según mediciones físicas.
+
+**Nota:** este documento expresa requisitos y arquitectura; no implica que todos estén implementados o validados.
