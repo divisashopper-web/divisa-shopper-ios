@@ -379,17 +379,11 @@ final class MetaWearablesManager: ObservableObject {
         previewImageCount = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
-        sessionStateTask?.cancel()
-        sessionStateTask = nil
-        frameWatchdogTask?.cancel()
-        frameWatchdogTask = nil
-        // Primero cancelar las suscripciones: no recibir estados tardíos
-        // mientras se cierran la cámara y la sesión anterior.
-        listenerTokens.clear()
-        camera?.stop()
+        // Reutilizar el cierre oficial de cámara para notificar al
+        // coordinador si el stream anterior estaba transmitiendo. Así
+        // puede archivar el MOV antes de conectar una sesión distinta.
+        stopCameraStream()
         deviceSession?.stop()
-        stream = nil
-        camera = nil
         deviceSession = nil
 
         do {
