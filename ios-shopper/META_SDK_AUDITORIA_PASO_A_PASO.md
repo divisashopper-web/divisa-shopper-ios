@@ -33,3 +33,14 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [x] La parada explícita del CameraStream notifica al coordinador si había stream activo (commit b0b793c, CI exitosa).
 - [ ] Revisar orden de transición de fuente para evitar perder los primeros frames de grabación y confirmar cierre de segmentos con datos reales.
 - [ ] Comprobar CI del commit 3546e1c y efectuar validación de extremo a extremo en dispositivo real antes de declarar recepción de imagen.
+
+
+## Verificación de ciclo de vida — 14 octubre 2026
+
+- CI de `4ebeade` confirmada exitosa: el cierre de `CameraStream` cancela el observador de `DeviceSession`, y `startCameraStream` instala uno nuevo.
+- `CameraStream.statePublisher` distingue `.streaming` de otros estados y emite interrupción solamente si antes transmitía.
+- `DeviceSession.stateStream()` contempla `.paused`, `.started` y `.stopped`. Las rutas de pausa y cierre solo notifican pérdida de streaming si estaba activo, para evitar avisos duplicados.
+- El watchdog de frames detecta dos segundos sin muestras mientras el stream se reporta activo y notifica interrupción.
+- El coordinador deduplica la recuperación con `metaInterruptionPending`, protege el segmento MOV al recibir la interrupción y espera tres segundos antes de intentar reiniciar.
+- Pendiente: verificar en dispositivo real la semántica de los estados y que el primer frame de la sesión recuperada abra un nuevo archivo MOV.
+- Esta auditoría estática y CI no constituyen prueba de fotogramas físicos de las gafas.
