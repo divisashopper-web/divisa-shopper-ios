@@ -16,7 +16,7 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 ## Paso 2: registro (lectura inicial de nuestro código)
 - [x] MetaWearablesManager.registerGlasses llama wearables.startRegistration().
 - [x] MetaWearablesManager.handleRegistrationCallback llama wearables.handleUrl(url).
-- [ ] Comparar secuencia exacta, configuración de app link y tratamiento de callback con la referencia oficial, incluido el archivo de entrada de la aplicación.
+- [x] Revisado DIVISAShopperApp.swift: configura Wearables.configure() al iniciar y reenvía el callback a wearables.handleUrl(url) mediante el manager.\n- [x] Corregido filtro de retorno: antes exigía query metaWearablesAction; ahora valida solo el esquema divisa-shopper y deja que el SDK oficial interprete el callback (commit 7bf0da7).\n- [ ] Verificar secuencia exacta, configuración de app link y tratamiento del callback contra documentación oficial 1.0.1 y CI; todavía no se ha probado retorno real desde gafas.
 
 ## Paso 3: sesión y cámara (pendiente auditoría exhaustiva)
 - [x] Código local contiene checkPermissionStatus/requestPermission, AutoDeviceSelector, createSession, stateStream, start, addCamera, stream.videoFramePublisher, statePublisher, errorPublisher.
