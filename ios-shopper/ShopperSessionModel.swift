@@ -109,6 +109,7 @@ final class ShopperSessionModel: ObservableObject {
         metaWearables.onStreamingChanged = { [weak self] streaming in
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
                   self.connectionState == .connected,
+                  !self.isSwitchingCamera, !self.isEndingSession,
                   self.metaWearables.hasReceivedFrame else { return }
             // Proteger inmediatamente el material local cuando Meta deja
             // de transmitir; el periodo de gracia solo retrasa la recuperación.
