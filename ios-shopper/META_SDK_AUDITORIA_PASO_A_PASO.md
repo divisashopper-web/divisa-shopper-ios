@@ -25,3 +25,11 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [ ] Comprobar CI después de cambios.
 
 **Regla de liberación:** ninguna IPA para instalación física hasta cerrar los puntos pendientes que se puedan comprobar sin gafas, registrar las limitaciones y obtener CI exitoso. La compilación no prueba recepción real de fotogramas.
+
+## Paso 4: entrega de frames y grabación local
+- [x] Contrastada la interfaz pública real MWDATCamera 1.0.1: StreamConfiguration(.raw/.hvc1), DeviceSession.addCamera, Stream.videoFramePublisher, Stream.statePublisher, Stream.errorPublisher, VideoFrame.sampleBuffer y makeUIImage().
+- [x] Se revisó ShopperSessionModel.swift y LocalVideoRecorder.swift. El coordinador entrega buffers válidos a LiveKit y al grabador local.
+- [x] Eliminada dependencia adicional de liveKit.activeCameraSource en la ruta de escritura local de fotogramas Meta: ahora depende de grabación activa y fuente Meta seleccionada (commit 3546e1c). No se modifica el motor de cámara iPhone.
+- [x] La parada explícita del CameraStream notifica al coordinador si había stream activo (commit b0b793c, CI exitosa).
+- [ ] Revisar orden de transición de fuente para evitar perder los primeros frames de grabación y confirmar cierre de segmentos con datos reales.
+- [ ] Comprobar CI del commit 3546e1c y efectuar validación de extremo a extremo en dispositivo real antes de declarar recepción de imagen.
