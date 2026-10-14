@@ -477,10 +477,12 @@ final class ShopperSessionModel: ObservableObject {
         // Only starting a new recording requires an active client session.
         guard !isEndingSession, !isSwitchingCamera else { return }
         if isRecording {
+            // Cerrar la compuerta de entrada antes de esperar finishWriting:
+            // los frames tardíos no deben abrir otro MOV mientras se detiene.
+            isRecording = false
+            stopRecordingTimer()
             Task {
                 await localRecorder.stop()
-                isRecording = false
-                stopRecordingTimer()
                 if !localRecorder.lastRecordingSegments.isEmpty {
                     statusMessage = "Grabación local guardada"
                 } else {
