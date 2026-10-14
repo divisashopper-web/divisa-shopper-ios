@@ -117,7 +117,15 @@ final class MetaWearablesManager: ObservableObject {
         defer { startupTimeout.cancel() }
 
         for await state in stateStream {
-            guard !Task.isCancelled, streamGeneration == generation else { return nil }
+            guard !Task.isCancelled, streamGeneration == generation else {
+                // Una nueva conexión puede invalidar este intento mientras
+                // el SDK espera estados. Cerrar únicamente la sesión antigua.
+                session.stop()
+                if streamGeneration == generation {
+                    deviceSession = nil
+                }
+                return nil
+            }
             // No ocultar la causa original cuando el watchdog detiene
             // la sesión y el SDK publica posteriormente el estado .stopped.
             if status != "Tiempo de espera agotado al conectar Ray-Ban" {
