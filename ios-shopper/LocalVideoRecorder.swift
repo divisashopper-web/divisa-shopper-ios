@@ -30,7 +30,9 @@ final class LocalVideoRecorder: ObservableObject {
     }
 
     func start(source: CameraSource) {
-        guard !isRecording else { return }
+        // finishWriting() suspende el MainActor: impedir que otra sesión
+        // sobrescriba writer/segmentFiles mientras el MOV anterior se cierra.
+        guard !isRecording, !isFinalizingSegment else { return }
         writer = nil
         input = nil
         audioInput = nil
