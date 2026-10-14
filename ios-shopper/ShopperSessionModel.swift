@@ -133,8 +133,10 @@ final class ShopperSessionModel: ObservableObject {
                         return
                     }
                     if protected {
-                        self.statusMessage = "Segmento Ray-Ban protegido · esperando recuperación"
-                    } else {
+                        if self.isRecording {
+                            self.statusMessage = "Segmento Ray-Ban protegido · esperando recuperación"
+                        }
+                    } else if self.isRecording {
                         self.recordingSaveError = "No se pudo confirmar el cierre del segmento Ray-Ban interrumpido."
                     }
                 }
