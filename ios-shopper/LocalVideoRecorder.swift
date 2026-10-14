@@ -93,14 +93,15 @@ final class LocalVideoRecorder: ObservableObject {
         // Esperar su resultado antes de interpretar writer == nil como éxito.
         let wasFinalizing = isFinalizingSegment
         guard writer != nil || wasFinalizing else { return true }
-        let countBefore = segmentFiles.count
+        let expectedSegmentURL = lastRecordingURL
         await finishCurrentSegment()
         lastRecordingSegments = segmentFiles
         lastProtectedSegmentURL = segmentFiles.last
         refreshRecordings()
         // Si ya estaba finalizando, otro solicitante pudo haber registrado
         // el archivo antes de que esta operación empezara a esperar.
-        return segmentFiles.count > countBefore || (wasFinalizing && !segmentFiles.isEmpty)
+        guard let expectedSegmentURL else { return false }
+        return segmentFiles.contains(expectedSegmentURL)
     }
 
     /// Finaliza el archivo anterior antes de recibir fotogramas de otra cámara.
