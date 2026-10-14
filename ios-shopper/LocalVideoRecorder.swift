@@ -181,7 +181,9 @@ final class LocalVideoRecorder: ObservableObject {
                 self.startTime = pts
                 self.lastRecordingURL = url
                 self.lastRecordingName = url.lastPathComponent
-                self.configureAudioInputIfNeeded(format: nil)
+                // La ruta V1 graba solo video. No añadir entradas de audio
+                // después de startWriting(): AVAssetWriter requiere que
+                // todas las entradas se configuren antes de comenzar.
             } catch {
                 return
             }
