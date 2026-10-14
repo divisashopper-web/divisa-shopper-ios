@@ -99,7 +99,8 @@ final class ShopperSessionModel: ObservableObject {
             self.rayBanPreviewImage = self.metaWearables.previewImage
             self.liveKit.pushRayBanFrame(pixelBuffer)
 
-            guard self.liveKit.activeCameraSource == .rayBanMeta else { return }
+            // Guardar los fotogramas locales de Meta sin depender del estado de publicación de LiveKit.
+            guard self.isRecording, self.selectedCamera == .rayBanMeta else { return }
             self.localRecorder.append(sampleBuffer, source: .rayBanMeta)
         }
         metaWearables.onStreamingChanged = { [weak self] streaming in
