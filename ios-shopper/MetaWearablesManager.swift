@@ -72,6 +72,9 @@ final class MetaWearablesManager: ObservableObject {
         if try await wearables.checkPermissionStatus(.camera) != .granted {
             let permission = try await wearables.requestPermission(.camera)
             guard permission == .granted else {
+                // La autorización abre Meta AI y puede terminar después de
+                // que el usuario haya iniciado otra conexión.
+                guard !Task.isCancelled, streamGeneration == generation else { return nil }
                 status = "Permiso de cámara Ray-Ban no concedido"
                 return nil
             }
