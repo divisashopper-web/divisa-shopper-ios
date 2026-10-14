@@ -342,6 +342,9 @@ final class MetaWearablesManager: ObservableObject {
         do {
             try startCameraStream(session: session, generation: generation)
             let recovered = await waitUntilFirstFrame(timeoutSeconds: 20)
+            // Una conexión más reciente puede empezar durante esta espera.
+            // Nunca cerrar su cámara desde el intento de recuperación antiguo.
+            guard !Task.isCancelled, streamGeneration == generation else { return false }
             if !recovered {
                 // No dejar activa una cámara sin frames mientras el
                 // coordinador intenta reconstruir DeviceSession.
