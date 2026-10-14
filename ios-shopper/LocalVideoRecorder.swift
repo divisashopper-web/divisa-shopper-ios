@@ -103,6 +103,9 @@ final class LocalVideoRecorder: ObservableObject {
     func transitionRecording(to source: CameraSource) async {
         guard isRecording, activeSegmentSource != source else { return }
         await finishCurrentSegment()
+        // stop() puede haberse ejecutado durante finishWriting(). No
+        // reactivar una fuente después de finalizar la grabación lógica.
+        guard isRecording else { return }
         activeSegmentSource = source
     }
 
