@@ -154,8 +154,8 @@ final class MetaWearablesManager: ObservableObject {
         }
         // Si el AsyncStream termina sin .started, no conservar una sesión
         // que nunca llegó a estar lista para CameraStream.
+        session.stop()
         if streamGeneration == generation {
-            session.stop()
             deviceSession = nil
             diagnostic = "DeviceSession terminó sin confirmar estado iniciado"
             status = "Ray-Ban no confirmó la conexión"
