@@ -59,3 +59,9 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [ ] Verificar Info.plist/entitlements definitivos y configuración de publicación; `MetaAppID = 0` sigue siendo modo desarrollador.
 
 **Alcance de esta evidencia:** CI confirma compilación; no valida fotogramas de gafas físicas, persistencia MOV real ni compatibilidad extremo a extremo.
+
+## Cierre adicional de DeviceSession — 14 octubre 2026
+
+- [x] Commit `b0f7e64`: al terminar `stateStream()` sin `.started`, se detiene siempre la sesión local antigua; únicamente se borra `deviceSession` y se actualiza el diagnóstico si la generación sigue siendo la actual.
+- [ ] Confirmar CI del commit `b0f7e64` antes de considerarlo verificado por compilación.
+- [ ] Confirmar en gafas reales que las rutas de cierre y reintento no interfieren con el primer frame ni con el MOV.
