@@ -100,7 +100,10 @@ final class ShopperSessionModel: ObservableObject {
             self.liveKit.pushRayBanFrame(pixelBuffer)
 
             // Guardar los fotogramas locales de Meta sin depender del estado de publicación de LiveKit.
-            guard self.isRecording, self.selectedCamera == .rayBanMeta else { return }
+            // El grabador conoce su fuente activa y rechaza por sí mismo
+            // muestras de otra cámara. No depender del picker, que cambia
+            // después de la transición y puede descartar el primer frame.
+            guard self.isRecording else { return }
             self.localRecorder.append(sampleBuffer, source: .rayBanMeta)
         }
         metaWearables.onStreamingChanged = { [weak self] streaming in
