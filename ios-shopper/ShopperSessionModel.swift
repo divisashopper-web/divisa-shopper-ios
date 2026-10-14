@@ -135,15 +135,9 @@ final class ShopperSessionModel: ObservableObject {
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
                       !self.isEndingSession else { return }
-                if self.isRecording {
-                    let protected = await self.localRecorder.archiveCurrentSegmentForInterruption()
-                    if protected {
-                        self.statusMessage = "Video Ray-Ban protegido · recuperando cámara…"
-                    } else {
-                        self.recordingSaveError = "La cámara se interrumpió y no se pudo confirmar el cierre del segmento actual."
-                        self.statusMessage = "Interrupción Ray-Ban · verifica la grabación"
-                    }
-                }
+                // El segmento ya se protegió al recibir la interrupción.
+                // No archivarlo de nuevo: podría no haber fotogramas nuevos
+                // durante los tres segundos de espera.
                 await self.recoverRayBanStream()
             }
         }
