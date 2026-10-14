@@ -37,6 +37,7 @@ final class ShopperSessionModel: ObservableObject {
     private var iPhoneFrameWatchdogTask: Task<Void, Never>?
     private var iPhoneSegmentInterrupted = false
     private var cameraRecoveryDeadlineTask: Task<Void, Never>?
+    private var metaInterruptionPending = false
 
     let tokenEndpoint = URL(string: "https://divisa-shopper-ios.onrender.com/token")!
     let liveKit = LiveKitSessionManager()
@@ -110,7 +111,9 @@ final class ShopperSessionModel: ObservableObject {
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
                   self.connectionState == .connected,
                   !self.isSwitchingCamera, !self.isEndingSession,
-                  self.metaWearables.hasReceivedFrame else { return }
+                  self.metaWearables.hasReceivedFrame,
+                  !self.metaInterruptionPending else { return }
+            self.metaInterruptionPending = true
             // Proteger inmediatamente el material local cuando Meta deja
             // de transmitir; el periodo de gracia solo retrasa la recuperación.
             // No esperar tres segundos para cerrar un segmento interrumpido.
@@ -130,8 +133,9 @@ final class ShopperSessionModel: ObservableObject {
             // No cambiar de cámara hasta comprobar que la interrupción persiste.
             Task { [weak self] in
                 try? await Task.sleep(for: .seconds(3))
-                guard let self,
-                      self.connectionState == .connected,
+                guard let self else { return }
+                defer { self.metaInterruptionPending = false }
+                guard self.connectionState == .connected,
                       self.selectedCamera == .rayBanMeta,
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
