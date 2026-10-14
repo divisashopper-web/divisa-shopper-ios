@@ -106,10 +106,24 @@ final class LocalVideoRecorder: ObservableObject {
         activeSegmentSource = source
     }
 
+    private var segmentFinalizationWaiters: [CheckedContinuation<Void, Never>] = []
+
     private func finishCurrentSegment() async {
-        guard !isFinalizingSegment else { return }
+        // Otra transición o stop() puede entrar mientras finishWriting()
+        // está suspendido. Esperar el cierre real antes de informar éxito.
+        if isFinalizingSegment {
+            await withCheckedContinuation { continuation in
+                segmentFinalizationWaiters.append(continuation)
+            }
+            return
+        }
         isFinalizingSegment = true
-        defer { isFinalizingSegment = false }
+        defer {
+            isFinalizingSegment = false
+            let waiters = segmentFinalizationWaiters
+            segmentFinalizationWaiters.removeAll()
+            for waiter in waiters { waiter.resume() }
+        }
         input?.markAsFinished()
         if let writer {
             await writer.finishWriting()
