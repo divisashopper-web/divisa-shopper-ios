@@ -364,6 +364,9 @@ final class MetaWearablesManager: ObservableObject {
             guard !Task.isCancelled, streamGeneration == generation else { return }
             try startCameraStream(session: session, generation: generation)
         } catch {
+            // Un intento antiguo no debe reemplazar el diagnóstico de una
+            // conexión más reciente ni el estado de una sesión ya cerrada.
+            guard !Task.isCancelled, streamGeneration == generation else { return }
             diagnostic = "Error de inicio Meta: \(error.localizedDescription)"
             status = diagnostic
         }
