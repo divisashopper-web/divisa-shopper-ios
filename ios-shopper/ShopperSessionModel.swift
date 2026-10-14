@@ -469,19 +469,23 @@ final class ShopperSessionModel: ObservableObject {
         recordingTimer = nil
     }
 
+    private var isFinalizingLocalRecording = false
+
     func toggleRecording() {
         // La fuente que realmente publica LiveKit manda sobre cualquier estado
         // transitorio del Picker. Así el respaldo iPhone puede grabar aunque
         // Ray-Ban haya fallado segundos antes.
         // Stopping a local recording must remain possible even if LiveKit drops.
         // Only starting a new recording requires an active client session.
-        guard !isEndingSession, !isSwitchingCamera else { return }
+        guard !isEndingSession, !isSwitchingCamera, !isFinalizingLocalRecording else { return }
         if isRecording {
             // Cerrar la compuerta de entrada antes de esperar finishWriting:
             // los frames tardíos no deben abrir otro MOV mientras se detiene.
             isRecording = false
+            isFinalizingLocalRecording = true
             stopRecordingTimer()
             Task {
+                defer { isFinalizingLocalRecording = false }
                 await localRecorder.stop()
                 if !localRecorder.lastRecordingSegments.isEmpty {
                     statusMessage = "Grabación local guardada"
