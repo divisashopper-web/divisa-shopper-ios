@@ -18,9 +18,10 @@ struct DIVISAShopperApp: App {
             ShopperSessionView()
                 .environmentObject(session)
                 .onOpenURL { url in
-                    guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                          components.queryItems?.contains(where: { $0.name == "metaWearablesAction" }) == true
-                    else { return }
+                    // El SDK oficial decide si el enlace es un callback válido.
+                    // No exigir parámetros concretos antes de entregárselo:
+                    // Meta puede cambiar la forma del callback entre versiones.
+                    guard url.scheme?.lowercased() == "divisa-shopper" else { return }
                     Task {
                         await session.metaWearables.handleRegistrationCallback(url)
                     }
