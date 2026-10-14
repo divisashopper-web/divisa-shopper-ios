@@ -104,7 +104,10 @@ final class ShopperSessionModel: ObservableObject {
             // El grabador conoce su fuente activa y rechaza por sí mismo
             // muestras de otra cámara. No depender del picker, que cambia
             // después de la transición y puede descartar el primer frame.
-            guard self.isRecording else { return }
+            // Durante la protección de un segmento interrumpido, no admitir
+            // frames tardíos en el archivo anterior ni abrir uno nuevo hasta
+            // completar la ventana de recuperación.
+            guard self.isRecording, !self.metaInterruptionPending else { return }
             self.localRecorder.append(sampleBuffer, source: .rayBanMeta)
         }
         metaWearables.onStreamingChanged = { [weak self] streaming in
