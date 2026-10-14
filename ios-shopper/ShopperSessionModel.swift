@@ -133,12 +133,20 @@ final class ShopperSessionModel: ObservableObject {
                 // El SDK puede emitir estados transitorios starting/paused.
                 // La espera solo comienza después de proteger el archivo.
                 try? await Task.sleep(for: .seconds(3))
-                defer { self.metaInterruptionPending = false }
                 guard self.connectionState == .connected,
                       self.selectedCamera == .rayBanMeta,
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
-                      !self.isEndingSession else { return }
+                      !self.isEndingSession else {
+                    self.metaInterruptionPending = false
+                    return
+                }
+                // El MOV anterior ya terminó. Permitir que el primer frame
+                // recuperado cree el nuevo segmento, incluso mientras
+                // waitUntilFirstFrame todavía espera confirmación del SDK.
+                // recoverRayBanStream marca isSwitchingCamera sin suspenderse,
+                // por lo que otra interrupción no inicia recuperación paralela.
+                self.metaInterruptionPending = false
                 await self.recoverRayBanStream()
             }
         }
