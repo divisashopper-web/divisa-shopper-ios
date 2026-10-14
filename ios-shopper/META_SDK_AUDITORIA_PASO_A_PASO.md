@@ -44,3 +44,18 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - El coordinador deduplica la recuperación con `metaInterruptionPending`, protege el segmento MOV al recibir la interrupción y espera tres segundos antes de intentar reiniciar.
 - Pendiente: verificar en dispositivo real la semántica de los estados y que el primer frame de la sesión recuperada abra un nuevo archivo MOV.
 - Esta auditoría estática y CI no constituyen prueba de fotogramas físicos de las gafas.
+
+
+## Auditoría de recuperación y concurrencia — 14 octubre 2026
+
+- [x] CI verificada exitosa para `8b51b24`, `e7d228e`, `ddecb49`, `7252deb`, `e6c615f` y `6a610d1`.
+- [x] `ShopperSessionModel.selectCamera` no cancela el plazo de respaldo iPhone cuando rechaza una selección por transición activa (`8b51b24`).
+- [x] Volver a seleccionar Ray-Ban durante la espera de recuperación no cancela el respaldo programado (`e7d228e`).
+- [x] Una `DeviceSession` obsoleta se detiene al invalidarse la generación de conexión (`ddecb49`).
+- [x] Si el reinicio de `CameraStream` no obtiene un primer frame válido, se cierra el intento de cámara fallido antes de reconstruir la sesión (`7252deb`).
+- [x] La ruta de espera y la ruta de excepción de `restartCameraStream` comprueban la generación antes de cerrar cámara o sobrescribir diagnósticos (`e6c615f`, `6a610d1`).
+- [ ] Auditar la semántica exacta de estados y errores del SDK contra documentación oficial y ejemplo CameraAccess, sin atribuir comportamientos no publicados al SDK.
+- [ ] Prueba física: registro, permiso, primer frame válido, vista previa, LiveKit, MOV reproducible, desconexión, reconexión y respaldo iPhone.
+- [ ] Verificar Info.plist/entitlements definitivos y configuración de publicación; `MetaAppID = 0` sigue siendo modo desarrollador.
+
+**Alcance de esta evidencia:** CI confirma compilación; no valida fotogramas de gafas físicas, persistencia MOV real ni compatibilidad extremo a extremo.
