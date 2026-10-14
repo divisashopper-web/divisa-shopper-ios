@@ -343,13 +343,18 @@ final class MetaWearablesManager: ObservableObject {
             try startCameraStream(session: session, generation: generation)
             let recovered = await waitUntilFirstFrame(timeoutSeconds: 20)
             if !recovered {
+                // No dejar activa una cámara sin frames mientras el
+                // coordinador intenta reconstruir DeviceSession.
+                stopCameraStream()
                 diagnostic = "CameraStream reiniciado, pero Meta no entregó imagen válida en 20 s"
                 status = "Ray-Ban sin imagen tras reiniciar cámara"
             }
             return recovered
         } catch {
-            diagnostic = "Error reiniciando CameraStream: \(error.localizedDescription)"
-            status = diagnostic
+            let failure = "Error reiniciando CameraStream: \(error.localizedDescription)"
+            stopCameraStream()
+            diagnostic = failure
+            status = failure
             return false
         }
     }
