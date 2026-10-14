@@ -354,6 +354,9 @@ final class MetaWearablesManager: ObservableObject {
             }
             return recovered
         } catch {
+            // Si otra conexión reemplazó este intento, su CameraStream y
+            // sus diagnósticos pertenecen a la generación nueva.
+            guard !Task.isCancelled, streamGeneration == generation else { return false }
             let failure = "Error reiniciando CameraStream: \(error.localizedDescription)"
             stopCameraStream()
             diagnostic = failure
