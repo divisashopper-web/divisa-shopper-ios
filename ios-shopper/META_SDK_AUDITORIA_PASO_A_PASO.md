@@ -65,3 +65,13 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [x] Commit `b0f7e64`: al terminar `stateStream()` sin `.started`, se detiene siempre la sesión local antigua; únicamente se borra `deviceSession` y se actualiza el diagnóstico si la generación sigue siendo la actual.
 - [ ] Confirmar CI del commit `b0f7e64` antes de considerarlo verificado por compilación.
 - [ ] Confirmar en gafas reales que las rutas de cierre y reintento no interfieren con el primer frame ni con el MOV.
+
+## Hallazgo de alcance de grabación — 14 octubre 2026
+
+- [x] Verificado en `LocalVideoRecorder.start(source:)`: la ruta V1 de grabación local está configurada explícitamente para **solo video**. El código comenta que capturar un segundo micrófono junto a la sesión de audio de LiveKit produjo cierres en un iPhone físico y se desactivó para estabilizar el video.
+- [ ] **No afirmar que el MOV final incluye voz del cliente ni audio bidireccional**. LiveKit mantiene audio en la llamada, pero eso no equivale a audio multiplexado en el MOV local.
+- [ ] Diseñar y verificar captura/multiplexación de audio compatible con LiveKit, sin abrir otra sesión de micrófono que provoque conflictos. Mantenerlo fuera de la ruta crítica de primera imagen Meta.
+- [x] `archiveCurrentSegmentForInterruption` espera `finishWriting()` y confirma la URL esperada entre los segmentos completados cuando había un writer activo.
+- [ ] Validar con archivos MOV reales que los segmentos son reproducibles y que el primer frame posterior a una interrupción inicia un archivo nuevo.
+
+**Decisión de liberación:** primero demostrar video estable y MOV reproducible; el audio bidireccional grabado sigue siendo una función pendiente, no una capacidad certificada.
