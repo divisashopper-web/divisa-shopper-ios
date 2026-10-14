@@ -1,4 +1,4 @@
-<!-- Merge these entries into the app target Info.plist. -->
+<!-- Reference only: excluded from build. Effective configuration is project.yml. -->
 <key>NSCameraUsageDescription</key>
 <string>DIVISA SHOPPER usa la cámara del iPhone como respaldo durante la compra asistida.</string>
 <key>NSMicrophoneUsageDescription</key>
@@ -32,16 +32,16 @@
         <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
         <key>CFBundleURLSchemes</key>
         <array>
-            <string>divisashopper</string>
+            <string>divisa-shopper</string>
         </array>
     </dict>
 </array>
 <key>MWDAT</key>
 <dict>
     <key>AppLinkURLScheme</key>
-    <string>divisashopper://</string>
+    <string>divisa-shopper://</string>
     <key>MetaAppID</key>
-    <string>$(META_APP_ID)</string>
+    <string>0</string>
     <key>ClientToken</key>
     <string>$(CLIENT_TOKEN)</string>
     <key>TeamID</key>
