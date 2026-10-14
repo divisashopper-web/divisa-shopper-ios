@@ -333,10 +333,12 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func startSession() {
-        guard connectionState != .connecting && connectionState != .connected && !isEndingSession && !isSwitchingCamera else { return }
+        guard connectionState != .connecting && connectionState != .connected &&
+              !isEndingSession && !isSwitchingCamera && !isFinalizingLocalRecording else { return }
 
         // Cada compra comienza con estado limpio; no arrastrar avisos o respaldo de la sesión anterior.
         recordingSaveError = nil
+        metaInterruptionPending = false
         isUsingBackupCamera = false
         isSwitchingCamera = false
         isCameraRecoveryWaiting = false
