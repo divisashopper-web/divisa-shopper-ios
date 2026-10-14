@@ -403,17 +403,24 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func endSession() {
-        guard !isEndingSession && !isSwitchingCamera else {
+        guard !isEndingSession && !isSwitchingCamera && !isFinalizingLocalRecording else {
             if isSwitchingCamera { statusMessage = "Espera a que termine el cambio de cámara" }
+            if isFinalizingLocalRecording { statusMessage = "Espera a que termine de guardarse la grabación" }
             return
         }
         isEndingSession = true
-        statusMessage = isRecording ? "Guardando grabación antes de cerrar…" : "Finalizando sesión…"
+        let needsRecordingFinalization = isRecording
+        statusMessage = needsRecordingFinalization ? "Guardando grabación antes de cerrar…" : "Finalizando sesión…"
+        if needsRecordingFinalization {
+            // Cerrar la entrada de frames antes de suspendernos en finishWriting.
+            isRecording = false
+            isFinalizingLocalRecording = true
+            stopRecordingTimer()
+        }
         Task {
-            if isRecording {
+            if needsRecordingFinalization {
                 await localRecorder.stop()
-                isRecording = false
-                stopRecordingTimer()
+                isFinalizingLocalRecording = false
                 guard !localRecorder.lastRecordingSegments.isEmpty else {
                     recordingSaveError = "No se pudo confirmar el archivo. La sesión seguirá conectada para proteger la compra."
                     statusMessage = "Grabación no confirmada · sesión continúa conectada"
