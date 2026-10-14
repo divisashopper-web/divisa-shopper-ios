@@ -410,8 +410,15 @@ final class MetaWearablesManager: ObservableObject {
     /// Detiene solo el video. Mantiene DeviceSession disponible para
     /// reabrir CameraStream sin volver a registrar/reconectar las gafas.
     func stopCameraStream() {
+        // Avisar al coordinador antes de cerrar el stream: si se estaban
+        // grabando fotogramas Meta, debe finalizar el segmento actual.
+        let wasStreaming = isStreaming
         streamGeneration &+= 1
         listenerTokens.clear()
+        if wasStreaming {
+            isStreaming = false
+            onStreamingChanged?(false)
+        }
         frameWatchdogTask?.cancel()
         frameWatchdogTask = nil
         camera?.stop()
