@@ -383,8 +383,13 @@ final class MetaWearablesManager: ObservableObject {
             // Un intento antiguo no debe reemplazar el diagnóstico de una
             // conexión más reciente ni el estado de una sesión ya cerrada.
             guard !Task.isCancelled, streamGeneration == generation else { return }
-            diagnostic = "Error de inicio Meta: \(error.localizedDescription)"
-            status = diagnostic
+            let failure = "Error de inicio Meta: \(error.localizedDescription)"
+            // Si addCamera/startCameraStream falla después de crear la
+            // DeviceSession, liberar todo el intento incompleto. No dejar
+            // una sesión parcialmente iniciada para la próxima conexión.
+            stopRayBanPreview()
+            diagnostic = failure
+            status = failure
         }
     }
 
