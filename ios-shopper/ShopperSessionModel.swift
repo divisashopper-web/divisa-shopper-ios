@@ -110,6 +110,20 @@ final class ShopperSessionModel: ObservableObject {
             guard let self, !streaming, self.selectedCamera == .rayBanMeta,
                   self.connectionState == .connected,
                   self.metaWearables.hasReceivedFrame else { return }
+            // Proteger inmediatamente el material local cuando Meta deja
+            // de transmitir; el periodo de gracia solo retrasa la recuperación.
+            // No esperar tres segundos para cerrar un segmento interrumpido.
+            if self.isRecording {
+                Task { [weak self] in
+                    guard let self else { return }
+                    let protected = await self.localRecorder.archiveCurrentSegmentForInterruption()
+                    if protected {
+                        self.statusMessage = "Segmento Ray-Ban protegido · esperando recuperación"
+                    } else {
+                        self.recordingSaveError = "No se pudo confirmar el cierre del segmento Ray-Ban interrumpido."
+                    }
+                }
+            }
 
             // El SDK puede emitir "starting" o "paused" temporalmente.
             // No cambiar de cámara hasta comprobar que la interrupción persiste.
