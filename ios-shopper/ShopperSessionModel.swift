@@ -114,12 +114,11 @@ final class ShopperSessionModel: ObservableObject {
                   self.metaWearables.hasReceivedFrame,
                   !self.metaInterruptionPending else { return }
             self.metaInterruptionPending = true
-            // Proteger inmediatamente el material local cuando Meta deja
-            // de transmitir; el periodo de gracia solo retrasa la recuperación.
-            // No esperar tres segundos para cerrar un segmento interrumpido.
-            if self.isRecording {
-                Task { [weak self] in
-                    guard let self else { return }
+            // Una sola tarea serializa el cierre del MOV y la recuperación.
+            // Nunca reiniciar CameraStream mientras finishWriting sigue activo.
+            Task { [weak self] in
+                guard let self else { return }
+                if self.isRecording {
                     let protected = await self.localRecorder.archiveCurrentSegmentForInterruption()
                     if protected {
                         self.statusMessage = "Segmento Ray-Ban protegido · esperando recuperación"
@@ -127,22 +126,16 @@ final class ShopperSessionModel: ObservableObject {
                         self.recordingSaveError = "No se pudo confirmar el cierre del segmento Ray-Ban interrumpido."
                     }
                 }
-            }
 
-            // El SDK puede emitir "starting" o "paused" temporalmente.
-            // No cambiar de cámara hasta comprobar que la interrupción persiste.
-            Task { [weak self] in
+                // El SDK puede emitir estados transitorios starting/paused.
+                // La espera solo comienza después de proteger el archivo.
                 try? await Task.sleep(for: .seconds(3))
-                guard let self else { return }
                 defer { self.metaInterruptionPending = false }
                 guard self.connectionState == .connected,
                       self.selectedCamera == .rayBanMeta,
                       !self.metaWearables.isStreaming,
                       !self.isSwitchingCamera,
                       !self.isEndingSession else { return }
-                // El segmento ya se protegió al recibir la interrupción.
-                // No archivarlo de nuevo: podría no haber fotogramas nuevos
-                // durante los tres segundos de espera.
                 await self.recoverRayBanStream()
             }
         }
