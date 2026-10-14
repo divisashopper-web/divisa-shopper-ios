@@ -414,6 +414,11 @@ final class MetaWearablesManager: ObservableObject {
         // grabando fotogramas Meta, debe finalizar el segmento actual.
         let wasStreaming = isStreaming
         streamGeneration &+= 1
+        // Cada CameraStream instala también un observador de DeviceSession.
+        // Cancelarlo al detener la cámara evita acumular observadores al
+        // reiniciar el stream sobre la misma sesión.
+        sessionStateTask?.cancel()
+        sessionStateTask = nil
         listenerTokens.clear()
         if wasStreaming {
             isStreaming = false
