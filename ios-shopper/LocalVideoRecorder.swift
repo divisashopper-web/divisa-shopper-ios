@@ -87,6 +87,9 @@ final class LocalVideoRecorder: ObservableObject {
     @discardableResult
     func archiveCurrentSegmentForInterruption() async -> Bool {
         guard isRecording else { return false }
+        // La interrupción puede llegar antes del primer frame: todavía no
+        // existe archivo que cerrar y eso no debe reportarse como error.
+        guard writer != nil else { return true }
         let countBefore = segmentFiles.count
         await finishCurrentSegment()
         lastRecordingSegments = segmentFiles
