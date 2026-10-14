@@ -382,6 +382,8 @@ final class MetaWearablesManager: ObservableObject {
         // Reutilizar el cierre oficial de cámara para notificar al
         // coordinador si el stream anterior estaba transmitiendo. Así
         // puede archivar el MOV antes de conectar una sesión distinta.
+        // Si el coordinador ya está cambiando de fuente, su propia
+        // protección de transición evita una recuperación duplicada.
         stopCameraStream()
         deviceSession?.stop()
         deviceSession = nil
