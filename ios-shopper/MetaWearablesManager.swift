@@ -379,13 +379,14 @@ final class MetaWearablesManager: ObservableObject {
     /// Para DIVISA SHOPPER la cámara está lista únicamente después de recibir
     /// al menos un fotograma real.
     func waitUntilFirstFrame(timeoutSeconds: Double = 12) async -> Bool {
+        let expectedGeneration = streamGeneration
         let deadline = Date().addingTimeInterval(timeoutSeconds)
         while Date() < deadline {
+            guard !Task.isCancelled, streamGeneration == expectedGeneration else { return false }
             if hasReceivedFrame { return true }
             try? await Task.sleep(for: .milliseconds(250))
-            if Task.isCancelled { return false }
         }
-        return hasReceivedFrame
+        return !Task.isCancelled && streamGeneration == expectedGeneration && hasReceivedFrame
     }
 
     /// Espera el estado real del stream antes de decidir si usar el respaldo.
