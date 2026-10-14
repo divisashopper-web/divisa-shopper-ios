@@ -123,6 +123,15 @@ final class ShopperSessionModel: ObservableObject {
                 guard let self else { return }
                 if self.isRecording {
                     let protected = await self.localRecorder.archiveCurrentSegmentForInterruption()
+                    // El usuario puede detener la grabación o finalizar la
+                    // sesión mientras finishWriting() está suspendido.
+                    // No sobrescribir el estado de esas acciones posteriores.
+                    guard self.connectionState == .connected,
+                          self.selectedCamera == .rayBanMeta,
+                          !self.isEndingSession else {
+                        self.metaInterruptionPending = false
+                        return
+                    }
                     if protected {
                         self.statusMessage = "Segmento Ray-Ban protegido · esperando recuperación"
                     } else {
