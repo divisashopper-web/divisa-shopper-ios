@@ -256,10 +256,12 @@ final class ShopperSessionModel: ObservableObject {
     }
 
     func selectCamera(_ source: CameraSource) {
+        // Una selección durante otra transición no debe cancelar el plazo
+        // de respaldo automático ni dejar la sesión esperando indefinidamente.
+        guard !isSwitchingCamera && !isEndingSession else { return }
         cameraRecoveryDeadlineTask?.cancel()
         cameraRecoveryDeadlineTask = nil
         isCameraRecoveryWaiting = false
-        guard !isSwitchingCamera && !isEndingSession else { return }
         preferredCamera = source
 
         guard connectionState == .connected else {
