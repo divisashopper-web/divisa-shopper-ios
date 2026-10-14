@@ -197,7 +197,12 @@ final class MetaWearablesManager: ObservableObject {
                     self.previewImageCount += 1
                     self.pipelineStage = "5/5 · Imagen visible recibida"
                 }
-                self.onFrame?(frame.sampleBuffer)
+                // Solo entregar al coordinador muestras de video utilizables.
+                // El diagnóstico cuenta también las muestras inválidas, pero
+                // ninguna de ellas debe llegar a grabación ni publicación.
+                if pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                    self.onFrame?(frame.sampleBuffer)
+                }
             }
         }.store(in: listenerTokens)
 
