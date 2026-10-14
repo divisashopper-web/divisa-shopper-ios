@@ -10,8 +10,8 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [x] project.yml usa el paquete oficial con exactVersion: 1.0.1 y vincula ambos productos.
 - [x] project.yml declara MWDAT.AppLinkURLScheme = divisa-shopper:// y CFBundleURLSchemes = divisa-shopper.
 - [x] project.yml declara MetaAppID = 0 para modo desarrollador; NO equivale a configuración de publicación.
-- [!] Info.plist.fragment.xml (archivo excluido del target por project.yml) usa **otro esquema**: divisashopper:// y divisashopper, además de variables META_APP_ID/CLIENT_TOKEN/DEVELOPMENT_TEAM. Es documentación obsoleta o contradictoria; la configuración efectiva del target es project.yml. Pendiente decidir si actualizar fragmento para evitar errores futuros.
-- [ ] Verificar con referencia oficial 1.0.1 cada requisito de Info.plist, callback, entitlements y estado de registro; no basta que compile.
+- [x] Info.plist.fragment.xml, excluido del target, ahora coincide en URL scheme divisa-shopper y MetaAppID 0 con project.yml (commit afb6470). Sigue siendo una referencia, no la configuración efectiva. Variables de ClientToken/TeamID permanecen como plantilla, no se atribuye a ellas ningún fallo sin evidencia.
+- [ ] Verificar con referencia oficial 1.0.1 cada requisito de Info.plist, callback, entitlements y estado de registro; no basta que compile.\n- [x] La corrección del fragmento auxiliar no modifica el Info.plist generado ni la cámara iPhone.
 
 ## Paso 2: registro (lectura inicial de nuestro código)
 - [x] MetaWearablesManager.registerGlasses llama wearables.startRegistration().
