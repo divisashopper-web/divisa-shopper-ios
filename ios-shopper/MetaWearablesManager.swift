@@ -392,13 +392,14 @@ final class MetaWearablesManager: ObservableObject {
     /// Espera el estado real del stream antes de decidir si usar el respaldo.
     /// Evita interpretar como fallo el tiempo normal de conexión de las gafas.
     func waitUntilStreaming(timeoutSeconds: Double = 12) async -> Bool {
+        let expectedGeneration = streamGeneration
         let deadline = Date().addingTimeInterval(timeoutSeconds)
         while Date() < deadline {
+            guard !Task.isCancelled, streamGeneration == expectedGeneration else { return false }
             if isStreaming { return true }
             try? await Task.sleep(for: .milliseconds(250))
-            if Task.isCancelled { return false }
         }
-        return isStreaming
+        return !Task.isCancelled && streamGeneration == expectedGeneration && isStreaming
     }
 
     /// Detiene solo el video. Mantiene DeviceSession disponible para
