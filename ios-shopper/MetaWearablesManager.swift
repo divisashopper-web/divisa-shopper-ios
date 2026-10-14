@@ -192,15 +192,15 @@ final class MetaWearablesManager: ObservableObject {
                     self.framesWithoutImageBuffer += 1
                     self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
                 }
-                if let image {
-                    self.previewImage = image
-                    self.previewImageCount += 1
-                    self.pipelineStage = "5/5 · Imagen visible recibida"
-                }
-                // Solo entregar al coordinador muestras de video utilizables.
-                // El diagnóstico cuenta también las muestras inválidas, pero
-                // ninguna de ellas debe llegar a grabación ni publicación.
+                // La vista previa y el grabador deben basarse en la misma
+                // muestra válida; una UIImage aislada no confirma que exista
+                // un sampleBuffer listo para guardar.
                 if pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                    if let image {
+                        self.previewImage = image
+                        self.previewImageCount += 1
+                        self.pipelineStage = "5/5 · Imagen visible recibida"
+                    }
                     self.onFrame?(frame.sampleBuffer)
                 }
             }
