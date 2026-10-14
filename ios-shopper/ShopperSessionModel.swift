@@ -259,6 +259,13 @@ final class ShopperSessionModel: ObservableObject {
         // Una selección durante otra transición no debe cancelar el plazo
         // de respaldo automático ni dejar la sesión esperando indefinidamente.
         guard !isSwitchingCamera && !isEndingSession else { return }
+        // Mientras Meta está en espera de recuperación, seleccionar de nuevo
+        // la misma fuente no constituye un cambio exitoso: conservar el plazo
+        // que activará el respaldo del iPhone.
+        if isCameraRecoveryWaiting && source == .rayBanMeta {
+            statusMessage = "Ray-Ban en espera · el respaldo iPhone sigue programado"
+            return
+        }
         cameraRecoveryDeadlineTask?.cancel()
         cameraRecoveryDeadlineTask = nil
         isCameraRecoveryWaiting = false
