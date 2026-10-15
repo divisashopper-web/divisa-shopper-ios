@@ -20,6 +20,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var previewImageCount = 0
     @Published private(set) var previewFallbackCount = 0
     @Published private(set) var streamFreezeCount = 0
+    @Published private(set) var firstFrameTimeoutDiagnostic: String?
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
@@ -308,6 +309,7 @@ final class MetaWearablesManager: ObservableObject {
                         self.diagnostic = self.receivedFrameCount > 0
                             ? "Meta envió \(self.receivedFrameCount) frames, pero ninguno tiene imagen utilizable tras 15 s"
                             : "CameraStream abierto durante 15 s sin recibir fotogramas · comprobar autorización y gafas"
+                        self.firstFrameTimeoutDiagnostic = self.diagnostic
                         self.pipelineStage = "4/5 · Esperando primer frame Meta"
                     }
                     continue
@@ -418,6 +420,7 @@ final class MetaWearablesManager: ObservableObject {
         framesWithoutImageBuffer = 0
         previewImageCount = 0
         previewFallbackCount = 0
+        firstFrameTimeoutDiagnostic = nil
         lastFrameReceivedAt = nil
         firstFrameTime = nil
         // Reutilizar el cierre oficial de cámara para notificar al
