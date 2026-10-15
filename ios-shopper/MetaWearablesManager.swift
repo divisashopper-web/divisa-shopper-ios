@@ -390,7 +390,10 @@ final class MetaWearablesManager: ObservableObject {
     /// Orquestación de conveniencia: conserva un solo botón en DIVISA SHOPPER,
     /// pero internamente sesión y cámara son dos etapas independientes.
     func startRayBanPreview() async {
-        streamGeneration &+= 1
+        // Cerrar la cámara anterior ANTES de capturar la generación nueva.
+        // stopCameraStream() incrementa streamGeneration; capturarla antes
+        // invalidaba inmediatamente el intento y bloqueaba DeviceSession.
+        stopCameraStream()
         let generation = streamGeneration
         hasReceivedFrame = false
         previewImage = nil
@@ -407,7 +410,6 @@ final class MetaWearablesManager: ObservableObject {
         // puede archivar el MOV antes de conectar una sesión distinta.
         // Si el coordinador ya está cambiando de fuente, su propia
         // protección de transición evita una recuperación duplicada.
-        stopCameraStream()
         deviceSession?.stop()
         deviceSession = nil
 
