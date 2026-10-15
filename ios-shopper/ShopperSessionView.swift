@@ -202,7 +202,7 @@ struct ShopperSessionView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            Text("Imágenes visibles: \(session.metaWearables.previewImageCount) · Con pixel buffer: \(session.metaWearables.framesWithImageBuffer) · Recibidos: \(session.metaWearables.receivedFrameCount)")
+            Text("Imágenes visibles: \(session.metaWearables.previewImageCount) · Vista alternativa: \(session.metaWearables.previewFallbackCount) · Con pixel buffer: \(session.metaWearables.framesWithImageBuffer) · Recibidos: \(session.metaWearables.receivedFrameCount)")
                 .font(.caption2.monospacedDigit())
             Text(session.metaWearables.pipelineStage)
                 .font(.caption2.weight(.semibold))
