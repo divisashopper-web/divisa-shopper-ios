@@ -148,6 +148,11 @@ final class LocalVideoRecorder: ObservableObject {
 
     func append(_ sampleBuffer: CMSampleBuffer, source: CameraSource) {
         guard isRecording, !isFinalizingSegment, activeSegmentSource == source, CMSampleBufferDataIsReady(sampleBuffer) else { return }
+        // No continuar escribiendo en un AVAssetWriter fallido: el
+        // siguiente segmento solo puede comenzar tras cerrar el anterior.
+        if let writer, writer.status == .failed || writer.status == .cancelled {
+            return
+        }
 
         if writer == nil {
             guard let format = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
