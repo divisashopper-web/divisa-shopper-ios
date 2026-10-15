@@ -39,7 +39,7 @@ jobs:
 
   device:
     name: Signed iPhone IPA
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/meta-official-core-audit'
     runs-on: macos-latest
     timeout-minutes: 30
     steps:
