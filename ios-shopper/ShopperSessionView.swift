@@ -191,6 +191,12 @@ struct ShopperSessionView: View {
             .buttonStyle(.bordered)
             .disabled(session.isSwitchingCamera || session.isEndingSession ||
                       session.connectionState == .connected)
+            Button("Detener prueba de cámara Ray-Ban") {
+                session.metaWearables.stopRayBanPreview()
+            }
+            .buttonStyle(.bordered)
+            .disabled(session.isSwitchingCamera || session.isEndingSession ||
+                      session.connectionState == .connected)
             if let image = session.metaWearables.previewImage {
                 Image(uiImage: image)
                     .resizable()
