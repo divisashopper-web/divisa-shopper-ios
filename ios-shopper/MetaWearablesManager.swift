@@ -3,6 +3,7 @@ import MWDATCore
 import MWDATCamera
 import UIKit
 import CoreMedia
+import CoreImage
 
 @MainActor
 final class MetaWearablesManager: ObservableObject {
@@ -26,6 +27,7 @@ final class MetaWearablesManager: ObservableObject {
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
     private var frameCount = 0
+    private let previewCIContext = CIContext()
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
     private var frameWatchdogTask: Task<Void, Never>?
@@ -212,10 +214,28 @@ final class MetaWearablesManager: ObservableObject {
                 // muestra válida; una UIImage aislada no confirma que exista
                 // un sampleBuffer listo para guardar.
                 if pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                    // Algunos frames RAW traen CVPixelBuffer válido aunque
+                    // makeUIImage() no genere una vista previa. Renderizar
+                    // ese mismo buffer sin modificar la muestra del SDK.
+                    let visibleImage: UIImage?
                     if let image {
-                        self.previewImage = image
+                        visibleImage = image
+                    } else if let pixelBuffer {
+                        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+                        if let cgImage = self.previewCIContext.createCGImage(ciImage, from: ciImage.extent) {
+                            visibleImage = UIImage(cgImage: cgImage)
+                        } else {
+                            visibleImage = nil
+                        }
+                    } else {
+                        visibleImage = nil
+                    }
+                    if let visibleImage {
+                        self.previewImage = visibleImage
                         self.previewImageCount += 1
                         self.pipelineStage = "5/5 · Imagen visible recibida"
+                    } else {
+                        self.diagnostic = "Frame Meta válido, pero no se pudo crear la vista previa"
                     }
                     self.onFrame?(frame.sampleBuffer)
                 }
