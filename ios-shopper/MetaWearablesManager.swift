@@ -293,11 +293,26 @@ final class MetaWearablesManager: ObservableObject {
     private func startFrameWatchdog(generation: UInt) {
         frameWatchdogTask?.cancel()
         frameWatchdogTask = Task { [weak self] in
+            let startedAt = Date()
+            var reportedMissingFirstFrame = false
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                do { try await Task.sleep(for: .seconds(2)) }
+                catch { return }
                 guard let self, self.streamGeneration == generation else { return }
-                guard self.isStreaming, self.hasReceivedFrame,
-                      let last = self.lastFrameReceivedAt else { continue }
+                // El primer bloqueo real puede ocurrir ANTES de recibir
+                // cualquier frame. No confundir estado .streaming con video.
+                if !self.hasReceivedFrame {
+                    if !reportedMissingFirstFrame &&
+                       Date().timeIntervalSince(startedAt) >= 15 {
+                        reportedMissingFirstFrame = true
+                        self.diagnostic = self.receivedFrameCount > 0
+                            ? "Meta envió \(self.receivedFrameCount) frames, pero ninguno tiene imagen utilizable tras 15 s"
+                            : "CameraStream abierto durante 15 s sin recibir fotogramas · comprobar autorización y gafas"
+                        self.pipelineStage = "4/5 · Esperando primer frame Meta"
+                    }
+                    continue
+                }
+                guard self.isStreaming, let last = self.lastFrameReceivedAt else { continue }
                 if Date().timeIntervalSince(last) >= 2 {
                     self.streamFreezeCount += 1
                     self.diagnostic = "Stream Meta activo pero sin frames por 2 s · corte \(self.streamFreezeCount)"
