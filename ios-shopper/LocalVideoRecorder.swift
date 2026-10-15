@@ -204,8 +204,15 @@ final class LocalVideoRecorder: ObservableObject {
             }
         }
 
-        guard let input, input.isReadyForMoreMediaData else { return }
-        input.append(sampleBuffer)
+        // append devuelve false si AVAssetWriter no pudo aceptar el frame.
+        // No dar por grabado un fotograma que el escritor rechazó.
+        guard let writer, writer.status == .writing,
+              let input, input.isReadyForMoreMediaData else { return }
+        guard input.append(sampleBuffer) else {
+            // El siguiente fotograma inspeccionará writer.status y, si
+            // falló, abrirá un segmento nuevo sin tocar los ya finalizados.
+            return
+        }
     }
 
 
