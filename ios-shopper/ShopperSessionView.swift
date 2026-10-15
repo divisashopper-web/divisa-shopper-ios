@@ -220,6 +220,12 @@ struct ShopperSessionView: View {
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
+            if let firstFrameTimeout = session.metaWearables.firstFrameTimeoutDiagnostic {
+                Text("ALERTA PRIMER FRAME: \(firstFrameTimeout)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .textSelection(.enabled)
+            }
             Text(session.metaWearables.diagnostic)
                 .font(.caption2)
                 .textSelection(.enabled)
