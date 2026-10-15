@@ -18,6 +18,7 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var framesWithImageBuffer = 0
     @Published private(set) var framesWithoutImageBuffer = 0
     @Published private(set) var previewImageCount = 0
+    @Published private(set) var previewFallbackCount = 0
     @Published private(set) var streamFreezeCount = 0
 
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
@@ -224,6 +225,7 @@ final class MetaWearablesManager: ObservableObject {
                         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
                         if let cgImage = self.previewCIContext.createCGImage(ciImage, from: ciImage.extent) {
                             visibleImage = UIImage(cgImage: cgImage)
+                            self.previewFallbackCount += 1
                         } else {
                             visibleImage = nil
                         }
@@ -397,6 +399,7 @@ final class MetaWearablesManager: ObservableObject {
         framesWithImageBuffer = 0
         framesWithoutImageBuffer = 0
         previewImageCount = 0
+        previewFallbackCount = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
         // Reutilizar el cierre oficial de cámara para notificar al
