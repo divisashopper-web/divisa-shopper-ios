@@ -354,6 +354,9 @@ final class LocalVideoRecorder: ObservableObject {
         await finishCurrentSegment()
         activeSegmentSource = nil
         lastRecordingSegments = segmentFiles
+        // El último segmento protegido debe reflejar el cierre definitivo,
+        // incluso cuando la sesión terminó sin fotogramas nuevos.
+        lastProtectedSegmentURL = segmentFiles.last
         recordingWallClock = nil
         refreshRecordings()
     }
