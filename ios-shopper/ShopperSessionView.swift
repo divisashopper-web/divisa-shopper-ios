@@ -185,6 +185,16 @@ struct ShopperSessionView: View {
                 Task { await session.metaWearables.registerGlasses() }
             }
             .buttonStyle(.bordered)
+            Text("Registro SDK Meta: \(session.metaWearables.registrationStatus)")
+                .font(.caption2.monospaced())
+                .textSelection(.enabled)
+            Text("Gafas detectadas por SDK: \(session.metaWearables.detectedGlasses)")
+                .font(.caption2.monospacedDigit())
+            if session.metaWearables.detectedGlasses == 0 {
+                Text("Meta todavía no informa gafas disponibles para esta aplicación.")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+            }
             Button("Probar imagen Ray-Ban en este iPhone") {
                 Task { await session.metaWearables.startRayBanPreview() }
             }
