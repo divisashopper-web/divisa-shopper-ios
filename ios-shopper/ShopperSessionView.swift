@@ -221,10 +221,16 @@ struct ShopperSessionView: View {
                     .foregroundStyle(.orange)
             }
             if let firstFrameTimeout = session.metaWearables.firstFrameTimeoutDiagnostic {
-                Text("ALERTA PRIMER FRAME: \(firstFrameTimeout)")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.orange)
-                    .textSelection(.enabled)
+                if session.metaWearables.previewImageCount > 0 {
+                    Text("PRIMER FRAME RECUPERADO · La imagen llegó después de la espera inicial.")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.green)
+                } else {
+                    Text("ALERTA PRIMER FRAME: \(firstFrameTimeout)")
+                        .font(.caption2.weight(.semibold))
+                        .foregroundStyle(.orange)
+                        .textSelection(.enabled)
+                }
             }
             Text(session.metaWearables.diagnostic)
                 .font(.caption2)
