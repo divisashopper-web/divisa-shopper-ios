@@ -195,7 +195,10 @@ struct ShopperSessionView: View {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
-                    .frame(maxHeight: 220)
+                    .frame(maxWidth: .infinity)
+                    .frame(minHeight: 220, maxHeight: 360)
+                    .background(.black)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                     .accessibilityLabel("Imagen local recibida directamente de Ray-Ban")
             } else {
                 Text("Sin imagen todavía · revisa el diagnóstico Meta")
@@ -213,7 +216,7 @@ struct ShopperSessionView: View {
                     .foregroundStyle(.orange)
             } else if session.metaWearables.framesWithImageBuffer > 0 &&
                         session.metaWearables.previewImageCount == 0 {
-                Text("Llegan muestras decodificadas, pero makeUIImage aún no produce vista previa.")
+                Text("Llegan muestras de imagen válidas, pero fallaron ambas conversiones para la vista previa.")
                     .font(.caption2)
                     .foregroundStyle(.orange)
             }
