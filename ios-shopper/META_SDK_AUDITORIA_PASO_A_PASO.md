@@ -75,3 +75,17 @@ Criterio: comparar APIs públicas e integración; no intentar replicar framework
 - [ ] Validar con archivos MOV reales que los segmentos son reproducibles y que el primer frame posterior a una interrupción inicia un archivo nuevo.
 
 **Decisión de liberación:** primero demostrar video estable y MOV reproducible; el audio bidireccional grabado sigue siendo una función pendiente, no una capacidad certificada.
+
+## Diagnóstico del bloqueo de registro — 15 octubre 2026
+
+**Síntoma físico confirmado:** la app mostró «Error interno — No se pudo completar la operación» durante el flujo de registro Meta; no se recibió primer fotograma. El mensaje genérico no identifica por sí mismo qué subsistema falló.
+
+**Ruta real comprobada en código:** `DIVISAShopperApp.init` invoca `Wearables.configure()` y registra el error únicamente en NSLog; `MetaWearablesManager.registerGlasses` invoca `startRegistration()`; el retorno con esquema `divisa-shopper` pasa a `wearables.handleUrl(url)`. Si falla `configure()`, la interfaz no expone directamente ese error. No asumir que `startRegistration()` puede funcionar tras fallo de configuración.
+
+**Configuración efectiva declarada:** `ios-shopper/project.yml` define `MWDAT.AppLinkURLScheme = divisa-shopper://`, `MWDAT.MetaAppID = 0`, esquema URL `divisa-shopper`, y `LSApplicationQueriesSchemes = fb-viewapp`. El fragmento XML auxiliar está excluido del target; sus valores de ClientToken/TeamID no se aplican automáticamente.
+
+**Brecha relevante:** la auditoría previa del ejemplo oficial CameraAccess identifica entitlements de HotspotConfiguration y wifi-info que no aparecen en project.yml. No añadirlos a ciegas: verificar requisitos exactos y soporte del perfil de firma. Tampoco cambiar MetaAppID sin verificar modo desarrollador/registro del proyecto.
+
+**Próxima intervención de código, antes de una IPA:** registrar de forma visible y distinguible cuatro etapas: (A) resultado de `Wearables.configure()`; (B) resultado de `startRegistration()`; (C) llegada del callback y resultado de `handleUrl`; (D) permiso de cámara. Mantener mensajes técnicos sin exponer credenciales. Verificar compilación en CI. Solo después pedir prueba física; no confundir éxito de compilación con conexión real.
+
+**Estado:** diagnóstico documental; no hay corrección demostrada del registro, ni cambio del flujo de video o grabación.
