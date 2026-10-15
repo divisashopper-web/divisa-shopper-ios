@@ -175,6 +175,12 @@ final class LocalVideoRecorder: ObservableObject {
                 guard writer.startWriting() else { return }
 
                 let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+                // No iniciar un segmento MOV con un timestamp inválido.
+                // Dejar que el siguiente frame válido intente abrirlo.
+                guard pts.isValid, pts.isNumeric else {
+                    writer.cancelWriting()
+                    return
+                }
                 writer.startSession(atSourceTime: pts)
                 self.writer = writer
                 self.input = input
