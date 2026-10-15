@@ -104,10 +104,11 @@ final class LocalVideoRecorder: ObservableObject {
         lastProtectedSegmentURL = segmentFiles.last
         refreshRecordings()
         // Sin fotogramas aceptados no había video que archivar.
-        // No confundir ese caso con un fallo al guardar material real.
+        // Tampoco considerar error si otro cierre ya terminó sin un MOV activo.
+        if !hadAcceptedFrames && expectedSegmentURL == nil { return true }
         if !hadAcceptedFrames && !wasFinalizing { return true }
-        // Si ya estaba finalizando, otro solicitante pudo haber registrado
-        // el archivo antes de que esta operación empezara a esperar.
+        // Si ya estaba finalizando, comprobar el mismo archivo que se
+        // estaba cerrando, no el último segmento de otra operación.
         guard let expectedSegmentURL else { return false }
         return segmentFiles.contains(expectedSegmentURL)
     }
