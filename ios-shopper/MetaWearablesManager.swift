@@ -208,7 +208,7 @@ final class MetaWearablesManager: ObservableObject {
                     self.diagnostic = "Video Ray-Ban recibido · fotogramas: \(self.frameCount)"
                 } else {
                     self.framesWithoutImageBuffer += 1
-                    self.diagnostic = "Meta entrega frame sin imagen decodificada · fotograma \(self.frameCount)"
+                    self.diagnostic = "Meta envía frames, pero sin CVPixelBuffer listo · recibidos: \(self.frameCount) · sin imagen: \(self.framesWithoutImageBuffer)"
                 }
                 // La vista previa y el grabador deben basarse en la misma
                 // muestra válida; una UIImage aislada no confirma que exista
