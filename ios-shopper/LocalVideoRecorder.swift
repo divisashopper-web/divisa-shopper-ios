@@ -18,6 +18,7 @@ final class LocalVideoRecorder: ObservableObject {
     private var input: AVAssetWriterInput?
     private var startTime: CMTime?
     private var lastAppendedPTS: CMTime?
+    private var currentSegmentHasFrames = false
     private var audioInput: AVAssetWriterInput?
     private let audioCapture = LocalAudioCapture()
     private var recordingWallClock: Date?
@@ -39,6 +40,7 @@ final class LocalVideoRecorder: ObservableObject {
         audioInput = nil
         startTime = nil
         lastAppendedPTS = nil
+        currentSegmentHasFrames = false
         recordingWallClock = nil
         lastRecordingURL = nil
         lastRecordingName = nil
@@ -142,7 +144,7 @@ final class LocalVideoRecorder: ObservableObject {
                 input?.markAsFinished()
                 await writer.finishWriting()
             }
-            if writer.status == .completed, let url = lastRecordingURL {
+            if writer.status == .completed, currentSegmentHasFrames, let url = lastRecordingURL {
                 segmentFiles.append(url)
             }
         }
@@ -151,6 +153,7 @@ final class LocalVideoRecorder: ObservableObject {
         audioInput = nil
         startTime = nil
         lastAppendedPTS = nil
+        currentSegmentHasFrames = false
     }
 
     func append(_ sampleBuffer: CMSampleBuffer, source: CameraSource) {
@@ -163,6 +166,7 @@ final class LocalVideoRecorder: ObservableObject {
             audioInput = nil
             startTime = nil
             lastAppendedPTS = nil
+            currentSegmentHasFrames = false
         }
 
         if writer == nil {
@@ -198,6 +202,7 @@ final class LocalVideoRecorder: ObservableObject {
                 self.writer = writer
                 self.input = input
                 self.startTime = pts
+                self.currentSegmentHasFrames = false
                 self.lastRecordingURL = url
                 self.lastRecordingName = url.lastPathComponent
                 // La ruta V1 graba solo video. No añadir entradas de audio
@@ -221,6 +226,7 @@ final class LocalVideoRecorder: ObservableObject {
             return
         }
         lastAppendedPTS = pts
+        currentSegmentHasFrames = true
     }
 
 
