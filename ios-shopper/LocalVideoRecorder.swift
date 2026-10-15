@@ -153,6 +153,10 @@ final class LocalVideoRecorder: ObservableObject {
             guard let format = CMSampleBufferGetFormatDescription(sampleBuffer) else { return }
             let dimensions = CMVideoFormatDescriptionGetDimensions(format)
             guard dimensions.width > 0, dimensions.height > 0 else { return }
+            // Validar antes de crear el archivo: un frame con PTS inválido
+            // no debe dejar un MOV vacío ni consumir un número de segmento.
+            let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+            guard pts.isValid, pts.isNumeric else { return }
 
             do {
                 let recordingsDirectory = try recordingsDirectory()
@@ -174,13 +178,6 @@ final class LocalVideoRecorder: ObservableObject {
                 writer.add(input)
                 guard writer.startWriting() else { return }
 
-                let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-                // No iniciar un segmento MOV con un timestamp inválido.
-                // Dejar que el siguiente frame válido intente abrirlo.
-                guard pts.isValid, pts.isNumeric else {
-                    writer.cancelWriting()
-                    return
-                }
                 writer.startSession(atSourceTime: pts)
                 self.writer = writer
                 self.input = input
