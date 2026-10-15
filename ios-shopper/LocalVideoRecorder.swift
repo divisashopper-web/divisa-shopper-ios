@@ -98,10 +98,14 @@ final class LocalVideoRecorder: ObservableObject {
         let wasFinalizing = isFinalizingSegment
         guard writer != nil || wasFinalizing else { return true }
         let expectedSegmentURL = lastRecordingURL
+        let hadAcceptedFrames = currentSegmentHasFrames
         await finishCurrentSegment()
         lastRecordingSegments = segmentFiles
         lastProtectedSegmentURL = segmentFiles.last
         refreshRecordings()
+        // Sin fotogramas aceptados no había video que archivar.
+        // No confundir ese caso con un fallo al guardar material real.
+        if !hadAcceptedFrames && !wasFinalizing { return true }
         // Si ya estaba finalizando, otro solicitante pudo haber registrado
         // el archivo antes de que esta operación empezara a esperar.
         guard let expectedSegmentURL else { return false }
