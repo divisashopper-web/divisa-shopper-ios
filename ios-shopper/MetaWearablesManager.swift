@@ -237,7 +237,7 @@ final class MetaWearablesManager: ObservableObject {
                         self.previewImageCount += 1
                         self.pipelineStage = "5/5 · Imagen visible recibida"
                     } else {
-                        self.diagnostic = "Frame Meta válido, pero no se pudo crear la vista previa"
+                        self.diagnostic = "Meta entrega CVPixelBuffer válido, pero falla la conversión a imagen · frames: \(self.framesWithImageBuffer)"
                     }
                     self.onFrame?(frame.sampleBuffer)
                 }
