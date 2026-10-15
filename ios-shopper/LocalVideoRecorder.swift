@@ -17,6 +17,7 @@ final class LocalVideoRecorder: ObservableObject {
     private var writer: AVAssetWriter?
     private var input: AVAssetWriterInput?
     private var startTime: CMTime?
+    private var lastAppendedPTS: CMTime?
     private var audioInput: AVAssetWriterInput?
     private let audioCapture = LocalAudioCapture()
     private var recordingWallClock: Date?
@@ -37,6 +38,7 @@ final class LocalVideoRecorder: ObservableObject {
         input = nil
         audioInput = nil
         startTime = nil
+        lastAppendedPTS = nil
         recordingWallClock = nil
         lastRecordingURL = nil
         lastRecordingName = nil
@@ -148,6 +150,7 @@ final class LocalVideoRecorder: ObservableObject {
         input = nil
         audioInput = nil
         startTime = nil
+        lastAppendedPTS = nil
     }
 
     func append(_ sampleBuffer: CMSampleBuffer, source: CameraSource) {
@@ -159,6 +162,7 @@ final class LocalVideoRecorder: ObservableObject {
             input = nil
             audioInput = nil
             startTime = nil
+            lastAppendedPTS = nil
         }
 
         if writer == nil {
@@ -206,6 +210,9 @@ final class LocalVideoRecorder: ObservableObject {
 
         // append devuelve false si AVAssetWriter no pudo aceptar el frame.
         // No dar por grabado un fotograma que el escritor rechazó.
+        let pts = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        guard pts.isValid, pts.isNumeric else { return }
+        if let lastAppendedPTS, CMTimeCompare(pts, lastAppendedPTS) <= 0 { return }
         guard let writer, writer.status == .writing,
               let input, input.isReadyForMoreMediaData else { return }
         guard input.append(sampleBuffer) else {
@@ -213,6 +220,7 @@ final class LocalVideoRecorder: ObservableObject {
             // falló, abrirá un segmento nuevo sin tocar los ya finalizados.
             return
         }
+        lastAppendedPTS = pts
     }
 
 
