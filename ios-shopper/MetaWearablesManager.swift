@@ -7,6 +7,8 @@ import CoreImage
 
 @MainActor
 final class MetaWearablesManager: ObservableObject {
+    @Published private(set) var registrationStatus = "Sin consultar"
+    @Published private(set) var detectedGlasses = 0
     @Published private(set) var previewImage: UIImage?
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
@@ -35,6 +37,30 @@ final class MetaWearablesManager: ObservableObject {
     private var frameWatchdogTask: Task<Void, Never>?
     private let listenerTokens = ListenerTokenBag()
     private var streamGeneration: UInt = 0
+    private var registrationMonitor: Task<Void, Never>?
+    private var deviceMonitor: Task<Void, Never>?
+
+    init() {
+        registrationStatus = String(describing: wearables.registrationState)
+        detectedGlasses = wearables.devices.count
+        registrationMonitor = Task { [weak self] in
+            guard let self else { return }
+            for await state in self.wearables.registrationStateStream() {
+                self.registrationStatus = String(describing: state)
+            }
+        }
+        deviceMonitor = Task { [weak self] in
+            guard let self else { return }
+            for await devices in self.wearables.devicesStream() {
+                self.detectedGlasses = devices.count
+            }
+        }
+    }
+
+    deinit {
+        registrationMonitor?.cancel()
+        deviceMonitor?.cancel()
+    }
 
     // Salidas puras del motor Meta. Este tipo no conoce LiveKit ni AVAssetWriter.
     // El coordinador decide después qué hacer con el frame oficial recibido.
