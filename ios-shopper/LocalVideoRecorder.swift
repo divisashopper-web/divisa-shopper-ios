@@ -133,9 +133,13 @@ final class LocalVideoRecorder: ObservableObject {
             segmentFinalizationWaiters.removeAll()
             for waiter in waiters { waiter.resume() }
         }
-        input?.markAsFinished()
+        // AVAssetWriter.finishWriting() solo es válido mientras escribe.
+        // Si ya falló o fue cancelado, no intentar finalizarlo de nuevo.
         if let writer {
-            await writer.finishWriting()
+            if writer.status == .writing {
+                input?.markAsFinished()
+                await writer.finishWriting()
+            }
             if writer.status == .completed, let url = lastRecordingURL {
                 segmentFiles.append(url)
             }
