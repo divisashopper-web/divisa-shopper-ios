@@ -412,6 +412,9 @@ final class MetaWearablesManager: ObservableObject {
         // protección de transición evita una recuperación duplicada.
         deviceSession?.stop()
         deviceSession = nil
+        pipelineStage = "1/5 · Iniciando conexión Meta"
+        diagnostic = "Cámara anterior cerrada · iniciando autorización y DeviceSession"
+        status = "Conectando Ray-Ban…"
 
         do {
             guard let session = try await startDeviceSession(generation: generation) else { return }
