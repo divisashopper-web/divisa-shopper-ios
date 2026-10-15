@@ -72,7 +72,8 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Solicitando registro de las Ray-Ban"
         do {
             try await wearables.startRegistration()
-            diagnostic = "Registro Meta iniciado · completa la autorización y vuelve a DIVISA SHOPPER"
+            registrationStatus = String(describing: wearables.registrationState)
+            diagnostic = "Registro Meta solicitado · estado SDK: \(registrationStatus) · autoriza en Meta y regresa"
         } catch {
             diagnostic = "Error de registro Meta: \(error.localizedDescription)"
             status = "No se pudo iniciar el registro: \(error.localizedDescription)"
@@ -86,8 +87,10 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Procesando autorización de las Ray-Ban…"
         do {
             _ = try await wearables.handleUrl(url)
-            diagnostic = "Retorno Meta aceptado · listo para crear DeviceSession"
-            status = "Ray-Ban registrada"
+            registrationStatus = String(describing: wearables.registrationState)
+            detectedGlasses = wearables.devices.count
+            diagnostic = "Retorno Meta procesado · registro SDK: \(registrationStatus) · gafas detectadas: \(detectedGlasses)"
+            status = "Retorno de Meta recibido · comprobando registro"
         } catch {
             diagnostic = "Error procesando retorno Meta: \(error.localizedDescription)"
             status = "No se pudo completar el registro Ray-Ban"
