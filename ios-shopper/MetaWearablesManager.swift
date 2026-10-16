@@ -11,6 +11,8 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var registrationStatus = "Sin consultar"
     @Published private(set) var detectedGlasses = 0
     @Published private(set) var activeGlassesAvailable = false
+    @Published private(set) var deviceCompatibilitySummary = "Sin comprobar"
+    @Published private(set) var firmwareUpdateRequired = false
     @Published private(set) var attemptNumber = 0
     @Published private(set) var lastAttemptResult = "Sin pruebas"
     @Published private(set) var lastAttemptStage = "Sin iniciar"
@@ -45,6 +47,8 @@ final class MetaWearablesManager: ObservableObject {
     private var wearables: any WearablesInterface { Wearables.shared }
     private lazy var deviceSelector = AutoDeviceSelector(wearables: wearables)
     private var activeDeviceMonitor: Task<Void, Never>?
+    private var compatibilityTokens: [DeviceIdentifier: AnyListenerToken] = [:]
+    private var deviceCompatibility: [DeviceIdentifier: Compatibility] = [:]
     private let sessionErrorTokens = ListenerTokenBag()
     private var deviceSession: DeviceSession?
     private var camera: Camera?
@@ -64,6 +68,7 @@ final class MetaWearablesManager: ObservableObject {
     init() {
         registrationStatus = String(describing: wearables.registrationState)
         detectedGlasses = wearables.devices.count
+        monitorCompatibility(devices: wearables.devices)
         registrationMonitor = Task { [weak self] in
             guard let self else { return }
             for await state in self.wearables.registrationStateStream() {
@@ -83,7 +88,42 @@ final class MetaWearablesManager: ObservableObject {
             guard let self else { return }
             for await devices in self.wearables.devicesStream() {
                 self.detectedGlasses = devices.count
+                self.monitorCompatibility(devices: devices)
             }
+        }
+    }
+
+    // Igual que WearablesViewModel oficial de CameraAccess:
+    // contar dispositivos no significa que sean compatibles o seleccionables.
+    private func monitorCompatibility(devices: [DeviceIdentifier]) {
+        let current = Set(devices)
+        compatibilityTokens = compatibilityTokens.filter { current.contains($0.key) }
+        deviceCompatibility = deviceCompatibility.filter { current.contains($0.key) }
+        for id in devices {
+            guard compatibilityTokens[id] == nil,
+                  let device = wearables.deviceForIdentifier(id) else { continue }
+            let compatibility = device.compatibility()
+            deviceCompatibility[id] = compatibility
+            let name = device.nameOrId()
+            let token = device.addCompatibilityListener { [weak self] compatibility in
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    self.deviceCompatibility[id] = compatibility
+                    self.updateCompatibilitySummary()
+                    self.trace("Compatibilidad \(name): \(compatibility)")
+                }
+            }
+            compatibilityTokens[id] = token
+        }
+        updateCompatibilitySummary()
+    }
+
+    private func updateCompatibilitySummary() {
+        firmwareUpdateRequired = deviceCompatibility.values.contains(.deviceUpdateRequired)
+        if deviceCompatibility.isEmpty {
+            deviceCompatibilitySummary = "Sin dispositivo compatible evaluado"
+        } else {
+            deviceCompatibilitySummary = deviceCompatibility.values.map { String(describing: $0) }.joined(separator: ", ")
         }
     }
 
@@ -163,7 +203,7 @@ final class MetaWearablesManager: ObservableObject {
     /// Etapa 1 CameraAccess: prepara una DeviceSession y espera confirmación
     /// de Meta. No publica LiveKit, no graba y no toca la cámara del iPhone.
     private func startDeviceSession(generation: UInt) async throws -> DeviceSession? {
-        trace("Creando DeviceSession con AutoDeviceSelector; elegible: \(activeGlassesAvailable)")
+        trace("Creando DeviceSession; elegible: \(activeGlassesAvailable); compatibilidad: \(deviceCompatibilitySummary)")
         pipelineStage = "1/5 · Creando DeviceSession Meta"
         diagnostic = "Iniciando sesión oficial CameraAccess…"
         guard !Task.isCancelled, streamGeneration == generation else { return nil }
