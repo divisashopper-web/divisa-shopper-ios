@@ -15,6 +15,9 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var hasReceivedFrame = false
     @Published private(set) var diagnostic = "Cámara no iniciada"
     @Published private(set) var pipelineStage = "Meta inactivo"
+    @Published private(set) var sdkSessionState = "Sin iniciar"
+    @Published private(set) var sdkStreamState = "Sin iniciar"
+    @Published private(set) var lastSDKError = "Ninguno"
     @Published private(set) var receivedFrameCount = 0
     @Published private(set) var lastFrameReceivedAt: Date?
     @Published private(set) var framesWithImageBuffer = 0
@@ -124,6 +127,7 @@ final class MetaWearablesManager: ObservableObject {
         deviceSession = session
 
         let stateStream = session.stateStream()
+        sdkSessionState = "Iniciando"
         diagnostic = "Iniciando sesión de gafas…"
         do {
             try session.start()
@@ -159,6 +163,7 @@ final class MetaWearablesManager: ObservableObject {
                 }
                 return nil
             }
+            sdkSessionState = String(describing: state)
             // No ocultar la causa original cuando el watchdog detiene
             // la sesión y el SDK publica posteriormente el estado .stopped.
             if status != "Tiempo de espera agotado al conectar Ray-Ban" {
@@ -220,6 +225,7 @@ final class MetaWearablesManager: ObservableObject {
         self.camera = camera
         let stream = camera.stream
         self.stream = stream
+        sdkStreamState = "Iniciando"
         diagnostic = "Cámara Meta asignada · esperando fotogramas"
 
         stream.videoFramePublisher.listen { [weak self] frame in
@@ -277,6 +283,7 @@ final class MetaWearablesManager: ObservableObject {
         stream.statePublisher.listen { [weak self] state in
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
+                self.sdkStreamState = String(describing: state)
                 let streaming = state == .streaming
                 let wasStreaming = self.isStreaming
                 self.isStreaming = streaming
@@ -303,6 +310,7 @@ final class MetaWearablesManager: ObservableObject {
         stream.errorPublisher.listen { [weak self] error in
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
+                self.lastSDKError = String(describing: error)
                 self.diagnostic = "Error SDK Meta: \(error.localizedDescription)"
                 self.status = self.diagnostic
                 if self.isStreaming {
@@ -444,6 +452,9 @@ final class MetaWearablesManager: ObservableObject {
         let generation = streamGeneration
         hasReceivedFrame = false
         previewImage = nil
+        sdkSessionState = "Sin iniciar"
+        sdkStreamState = "Sin iniciar"
+        lastSDKError = "Ninguno"
         frameCount = 0
         receivedFrameCount = 0
         framesWithImageBuffer = 0
@@ -475,6 +486,7 @@ final class MetaWearablesManager: ObservableObject {
             // conexión más reciente ni el estado de una sesión ya cerrada.
             guard !Task.isCancelled, streamGeneration == generation else { return }
             let failure = "Error de inicio Meta: \(error.localizedDescription)"
+            lastSDKError = String(describing: error)
             // Si addCamera/startCameraStream falla después de crear la
             // DeviceSession, liberar todo el intento incompleto. No dejar
             // una sesión parcialmente iniciada para la próxima conexión.
