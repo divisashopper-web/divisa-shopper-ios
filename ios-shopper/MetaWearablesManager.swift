@@ -4,6 +4,7 @@ import MWDATCamera
 import UIKit
 import CoreMedia
 import CoreImage
+import VideoToolbox
 
 @MainActor
 final class MetaWearablesManager: ObservableObject {
@@ -35,6 +36,8 @@ final class MetaWearablesManager: ObservableObject {
     private var stream: MWDATCamera.Stream?
     private var frameCount = 0
     private let previewCIContext = CIContext()
+    private var hevcDecoder: VTDecompressionSession?
+    private var hevcFormat: CMFormatDescription?
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
     private var frameWatchdogTask: Task<Void, Never>?
@@ -100,28 +103,45 @@ final class MetaWearablesManager: ObservableObject {
         }
     }
 
+    // CameraAccess usa HEVC y lo decodifica solo para la vista previa local.
+    // No se entrega ningún frame a LiveKit desde esta ruta de imagen.
+    private func decodeHEVCPreview(_ sample: CMSampleBuffer) -> UIImage? {
+        guard CMSampleBufferGetDataBuffer(sample) != nil,
+              let format = CMSampleBufferGetFormatDescription(sample) else { return nil }
+        if let previous = hevcFormat, !CMFormatDescriptionEqual(previous, otherFormatDescription: format) {
+            if let decoder = hevcDecoder { VTDecompressionSessionInvalidate(decoder) }
+            hevcDecoder = nil
+        }
+        if hevcDecoder == nil {
+            var decoder: VTDecompressionSession?
+            let attrs: [CFString: Any] = [kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA]
+            let status = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault,
+                formatDescription: format, decoderSpecification: nil,
+                imageBufferAttributes: attrs as CFDictionary,
+                outputCallback: nil, decompressionSessionOut: &decoder)
+            guard status == noErr, let decoder else { return nil }
+            hevcDecoder = decoder
+            hevcFormat = format
+        }
+        guard let decoder = hevcDecoder else { return nil }
+        nonisolated(unsafe) var output: CVPixelBuffer?
+        let result = VTDecompressionSessionDecodeFrame(decoder, sampleBuffer: sample,
+            flags: [], infoFlagsOut: nil) { status, _, buffer, _, _ in
+                if status == noErr { output = buffer }
+            }
+        guard result == noErr, let output else { return nil }
+        let ciImage = CIImage(cvPixelBuffer: output)
+        guard let cgImage = previewCIContext.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+
     /// Etapa 1 CameraAccess: prepara una DeviceSession y espera confirmación
     /// de Meta. No publica LiveKit, no graba y no toca la cámara del iPhone.
     private func startDeviceSession(generation: UInt) async throws -> DeviceSession? {
-        pipelineStage = "1/5 · Permiso de cámara Meta"
-        diagnostic = "Solicitando permiso Meta…"
-        if try await wearables.checkPermissionStatus(.camera) != .granted {
-            let permission = try await wearables.requestPermission(.camera)
-            guard permission == .granted else {
-                // La autorización abre Meta AI y puede terminar después de
-                // que el usuario haya iniciado otra conexión.
-                guard !Task.isCancelled, streamGeneration == generation else { return nil }
-                status = "Permiso de cámara Ray-Ban no concedido"
-                return nil
-            }
-        }
-
-        // El permiso puede abrir una pantalla externa y tardar. Si el usuario
-        // canceló o inició otra prueba, no crear una sesión obsoleta.
+        pipelineStage = "1/5 · Creando DeviceSession Meta"
+        diagnostic = "Iniciando sesión oficial CameraAccess…"
         guard !Task.isCancelled, streamGeneration == generation else { return nil }
-
         pipelineStage = "2/5 · Creando DeviceSession"
-        diagnostic = "Permiso concedido · creando sesión Meta"
         let selector = AutoDeviceSelector(wearables: wearables)
         let session = try wearables.createSession(deviceSelector: selector)
         deviceSession = session
@@ -207,7 +227,7 @@ final class MetaWearablesManager: ObservableObject {
         pipelineStage = "4/5 · Abriendo CameraStream"
         diagnostic = "Sesión Meta iniciada · abriendo cámara…"
         let config = StreamConfiguration(
-            videoCodec: .raw,
+            videoCodec: .hvc1,
             resolution: .low,
             frameRate: 24
         )
@@ -231,6 +251,7 @@ final class MetaWearablesManager: ObservableObject {
         stream.videoFramePublisher.listen { [weak self] frame in
             let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
             let image = frame.makeUIImage()
+            let decodedImage = image ?? self?.decodeHEVCPreview(frame.sampleBuffer)
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
                 self.frameCount += 1
@@ -250,13 +271,13 @@ final class MetaWearablesManager: ObservableObject {
                 // La vista previa y el grabador deben basarse en la misma
                 // muestra válida; una UIImage aislada no confirma que exista
                 // un sampleBuffer listo para guardar.
-                if pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                if (pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer)) || decodedImage != nil {
                     // Algunos frames RAW traen CVPixelBuffer válido aunque
                     // makeUIImage() no genere una vista previa. Renderizar
                     // ese mismo buffer sin modificar la muestra del SDK.
                     let visibleImage: UIImage?
-                    if let image {
-                        visibleImage = image
+                    if let decodedImage {
+                        visibleImage = decodedImage
                     } else if let pixelBuffer {
                         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
                         if let cgImage = self.previewCIContext.createCGImage(ciImage, from: ciImage.extent) {
@@ -270,6 +291,8 @@ final class MetaWearablesManager: ObservableObject {
                     }
                     if let visibleImage {
                         self.previewImage = visibleImage
+                        self.hasReceivedFrame = true
+                        self.lastFrameReceivedAt = Date()
                         self.previewImageCount += 1
                         self.pipelineStage = "5/5 · Imagen visible recibida"
                     } else {
@@ -416,6 +439,19 @@ final class MetaWearablesManager: ObservableObject {
         firstFrameTime = nil
 
         do {
+            // CameraAccess requests permission only after DeviceSession is started.
+            pipelineStage = "3/5 · Verificando permiso de cámara Meta"
+            if try await wearables.checkPermissionStatus(.camera) != .granted {
+                diagnostic = "Meta solicita permiso de cámara; regresa a DIVISA SHOPPER después de autorizar"
+                guard try await wearables.requestPermission(.camera) == .granted else {
+                    status = "Permiso de cámara Meta no concedido"
+                    return
+                }
+            }
+            guard !Task.isCancelled, streamGeneration == generation, session.state == .started else {
+                diagnostic = "La sesión Meta ya no está iniciada después de solicitar permiso"
+                return
+            }
             try startCameraStream(session: session, generation: generation)
             let recovered = await waitUntilFirstFrame(timeoutSeconds: 20)
             // Una conexión más reciente puede empezar durante esta espera.
