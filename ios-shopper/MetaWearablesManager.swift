@@ -251,9 +251,9 @@ final class MetaWearablesManager: ObservableObject {
         stream.videoFramePublisher.listen { [weak self] frame in
             let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
             let image = frame.makeUIImage()
-            let decodedImage = image ?? self?.decodeHEVCPreview(frame.sampleBuffer)
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
+                let decodedImage = image ?? self.decodeHEVCPreview(frame.sampleBuffer)
                 self.frameCount += 1
                 self.receivedFrameCount = self.frameCount
                 // El watchdog debe medir la última imagen realmente utilizable,
