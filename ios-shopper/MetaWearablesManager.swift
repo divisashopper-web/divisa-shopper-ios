@@ -725,8 +725,11 @@ final class MetaWearablesManager: ObservableObject {
         frameCount = 0
         firstFrameTime = nil
         status = "Ray-Ban sin conectar"
+        sdkSessionState = "Detenida"
+        sdkStreamState = "Detenido"
         pipelineStage = "Meta inactivo"
-        diagnostic = "Cámara detenida"
+        diagnostic = "Cámara detenida · lista para nuevo intento"
+        trace("Cámara y DeviceSession detenidas; nuevo intento disponible")
     }
 }
 
