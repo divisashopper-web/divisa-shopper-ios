@@ -4,6 +4,8 @@ import SwiftUI
 struct RayBanCameraTestView: View {
     @ObservedObject var manager: MetaWearablesManager
     @State private var isConnecting = false
+    @State private var connectionTask: Task<Void, Never>?
+    @State private var connectionRequestId = 0
 
     var body: some View {
         ScrollView {
@@ -34,18 +36,26 @@ struct RayBanCameraTestView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
 
                 Button(isConnecting ? "Conectando cámara Meta…" : "Conectar cámara Ray-Ban") {
+                    connectionTask?.cancel()
+                    connectionRequestId += 1
+                    let requestId = connectionRequestId
                     isConnecting = true
-                    Task {
+                    connectionTask = Task { @MainActor in
                         await manager.startRayBanPreview()
+                        guard !Task.isCancelled, connectionRequestId == requestId else { return }
                         isConnecting = false
+                        connectionTask = nil
                     }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(isConnecting)
 
                 Button("Detener cámara Ray-Ban") {
-                    manager.stopRayBanPreview()
+                    connectionTask?.cancel()
+                    connectionTask = nil
+                    connectionRequestId += 1
                     isConnecting = false
+                    manager.stopRayBanPreview()
                 }
                 .buttonStyle(.bordered)
 
@@ -80,6 +90,10 @@ struct RayBanCameraTestView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { manager.standaloneCameraTest = true }
         .onDisappear {
+            connectionTask?.cancel()
+            connectionTask = nil
+            connectionRequestId += 1
+            isConnecting = false
             manager.stopRayBanPreview()
             manager.standaloneCameraTest = false
         }
