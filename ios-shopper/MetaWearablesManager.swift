@@ -377,43 +377,12 @@ final class MetaWearablesManager: ObservableObject {
                         }
                     }
                 }
-                let decodedImage: UIImage? = nil
-                // La vista previa y el grabador deben basarse en la misma
-                // muestra válida; una UIImage aislada no confirma que exista
-                // un sampleBuffer listo para guardar.
-                if (pixelBuffer != nil && CMSampleBufferDataIsReady(frame.sampleBuffer)) || decodedImage != nil {
-                    // Algunos frames RAW traen CVPixelBuffer válido aunque
-                    // makeUIImage() no genere una vista previa. Renderizar
-                    // ese mismo buffer sin modificar la muestra del SDK.
-                    let visibleImage: UIImage?
-                    if let decodedImage {
-                        visibleImage = decodedImage
-                    } else if let pixelBuffer {
-                        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-                        if let cgImage = self.previewCIContext.createCGImage(ciImage, from: ciImage.extent) {
-                            visibleImage = UIImage(cgImage: cgImage)
-                            self.previewFallbackCount += 1
-                        } else {
-                            visibleImage = nil
-                        }
-                    } else {
-                        visibleImage = nil
-                    }
-                    if let visibleImage {
-                        self.previewImage = visibleImage
-                        self.hasReceivedFrame = true
-                        self.lastFrameReceivedAt = Date()
-                        self.previewImageCount += 1
-                        self.diagnostic = "Imagen Ray-Ban visible · HEVC decodificado: \(self.previewImageCount) · frames: \(self.receivedFrameCount)"
-                        self.pipelineStage = "5/5 · Imagen visible recibida"
-                        if self.previewImageCount == 1 {
-                            self.trace("Primer fotograma visible recibido desde Ray-Ban")
-                            self.lastAttemptResult = "Éxito: imagen real recibida de las gafas"
-                        }
-                    } else {
-                        self.diagnostic = "Meta entrega CVPixelBuffer válido, pero falla la conversión a imagen · frames: \(self.framesWithImageBuffer)"
-                    }
-                    if !self.standaloneCameraTest { self.onFrame?(frame.sampleBuffer) }
+                // Mantener la salida original hacia el coordinador únicamente
+                // cuando NO se está realizando la prueba independiente.
+                if !self.standaloneCameraTest,
+                   pixelBuffer != nil,
+                   CMSampleBufferDataIsReady(frame.sampleBuffer) {
+                    self.onFrame?(frame.sampleBuffer)
                 }
             }
         }.store(in: listenerTokens)
@@ -770,12 +739,20 @@ private final class MetaPreviewDecodeWorker: @unchecked Sendable {
     private var session: VTDecompressionSession?
     private var format: CMFormatDescription?
     private let context = CIContext()
+    private var lastRenderedAt: Date?
 
     func submit(_ sample: CMSampleBuffer, generation: UInt, completion: @escaping @Sendable (UIImage?, UInt) -> Void) {
         let boxed = BufferBox(sample: sample)
         queue.async { [self] in
-            let image = decode(boxed.sample)
-            completion(image, generation)
+            // Procesar cada muestra comprimida para conservar la cadena HEVC,
+            // pero crear UIImage solo cuando toca actualizar la vista.
+            let now = Date()
+            let render = lastRenderedAt.map { now.timeIntervalSince($0) >= 0.125 } ?? true
+            let image = decode(boxed.sample, render: render)
+            if render {
+                lastRenderedAt = now
+                completion(image, generation)
+            }
         }
     }
 
@@ -784,10 +761,11 @@ private final class MetaPreviewDecodeWorker: @unchecked Sendable {
             if let session { VTDecompressionSessionInvalidate(session) }
             session = nil
             format = nil
+            lastRenderedAt = nil
         }
     }
 
-    private func decode(_ sample: CMSampleBuffer) -> UIImage? {
+    private func decode(_ sample: CMSampleBuffer, render: Bool) -> UIImage? {
         guard CMSampleBufferGetDataBuffer(sample) != nil,
               let currentFormat = CMSampleBufferGetFormatDescription(sample) else { return nil }
         if let format, !CMFormatDescriptionEqual(format, otherFormatDescription: currentFormat) {
@@ -812,7 +790,7 @@ private final class MetaPreviewDecodeWorker: @unchecked Sendable {
             flags: [], infoFlagsOut: nil) { status, _, buffer, _, _ in
                 if status == noErr { output = buffer }
             }
-        guard result == noErr, let output else { return nil }
+        guard result == noErr, let output, render else { return nil }
         let ci = CIImage(cvPixelBuffer: output)
         guard let cg = context.createCGImage(ci, from: ci.extent) else { return nil }
         return UIImage(cgImage: cg)
