@@ -78,5 +78,10 @@ struct RayBanCameraTestView: View {
         }
         .navigationTitle("Ray-Ban Meta")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear { manager.standaloneCameraTest = true }
+        .onDisappear {
+            manager.stopRayBanPreview()
+            manager.standaloneCameraTest = false
+        }
     }
 }
