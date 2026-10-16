@@ -135,6 +135,8 @@ final class MetaWearablesManager: ObservableObject {
 
     // Salidas puras del motor Meta. Este tipo no conoce LiveKit ni AVAssetWriter.
     // El coordinador decide después qué hacer con el frame oficial recibido.
+    // La prueba de CameraAccess debe quedarse en Meta, sin callbacks del coordinador.
+    var standaloneCameraTest = false
     var onFrame: ((CMSampleBuffer) -> Void)?
     var onStreamingChanged: ((Bool) -> Void)?
 
@@ -379,7 +381,7 @@ final class MetaWearablesManager: ObservableObject {
                     } else {
                         self.diagnostic = "Meta entrega CVPixelBuffer válido, pero falla la conversión a imagen · frames: \(self.framesWithImageBuffer)"
                     }
-                    self.onFrame?(frame.sampleBuffer)
+                    if !self.standaloneCameraTest { self.onFrame?(frame.sampleBuffer) }
                 }
             }
         }.store(in: listenerTokens)
