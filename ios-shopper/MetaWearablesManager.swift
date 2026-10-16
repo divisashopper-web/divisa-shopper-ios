@@ -378,6 +378,10 @@ final class MetaWearablesManager: ObservableObject {
                         self.lastFrameReceivedAt = Date()
                         self.previewImageCount += 1
                         self.pipelineStage = "5/5 · Imagen visible recibida"
+                        if self.previewImageCount == 1 {
+                            self.trace("Primer fotograma visible recibido desde Ray-Ban")
+                            self.lastAttemptResult = "Éxito: imagen real recibida de las gafas"
+                        }
                     } else {
                         self.diagnostic = "Meta entrega CVPixelBuffer válido, pero falla la conversión a imagen · frames: \(self.framesWithImageBuffer)"
                     }
