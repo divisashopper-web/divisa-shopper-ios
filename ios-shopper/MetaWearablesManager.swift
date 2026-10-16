@@ -57,6 +57,7 @@ final class MetaWearablesManager: ObservableObject {
     private let previewCIContext = CIContext()
     private var hevcDecoder: VTDecompressionSession?
     private var hevcFormat: CMFormatDescription?
+    private var lastPreviewDecodeAt: Date?
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
     private var frameWatchdogTask: Task<Void, Never>?
@@ -336,7 +337,6 @@ final class MetaWearablesManager: ObservableObject {
             let image = frame.makeUIImage()
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
-                let decodedImage = image ?? self.decodeHEVCPreview(frame.sampleBuffer)
                 self.frameCount += 1
                 self.receivedFrameCount = self.frameCount
                 // El watchdog debe medir la última imagen realmente utilizable,
@@ -351,6 +351,14 @@ final class MetaWearablesManager: ObservableObject {
                     self.framesWithoutImageBuffer += 1
                     self.diagnostic = "Meta envía frames, pero sin CVPixelBuffer listo · recibidos: \(self.frameCount) · sin imagen: \(self.framesWithoutImageBuffer)"
                 }
+                // La decodificación HEVC síncrona bloquea el hilo principal si
+                // intentamos hacerla 24 veces por segundo. Para la prueba local,
+                // limitar el preview a ~8 fps y conservar el conteo real de frames.
+                let now = Date()
+                let shouldRender = self.lastPreviewDecodeAt.map { now.timeIntervalSince($0) >= 0.125 } ?? true
+                guard shouldRender else { return }
+                self.lastPreviewDecodeAt = now
+                let decodedImage = image ?? self.decodeHEVCPreview(frame.sampleBuffer)
                 // La vista previa y el grabador deben basarse en la misma
                 // muestra válida; una UIImage aislada no confirma que exista
                 // un sampleBuffer listo para guardar.
@@ -377,6 +385,7 @@ final class MetaWearablesManager: ObservableObject {
                         self.hasReceivedFrame = true
                         self.lastFrameReceivedAt = Date()
                         self.previewImageCount += 1
+                        self.diagnostic = "Imagen Ray-Ban visible · HEVC decodificado: \(self.previewImageCount) · frames: \(self.receivedFrameCount)"
                         self.pipelineStage = "5/5 · Imagen visible recibida"
                         if self.previewImageCount == 1 {
                             self.trace("Primer fotograma visible recibido desde Ray-Ban")
@@ -704,6 +713,10 @@ final class MetaWearablesManager: ObservableObject {
         framesWithoutImageBuffer = 0
         lastFrameReceivedAt = nil
         firstFrameTime = nil
+        lastPreviewDecodeAt = nil
+        if let decoder = hevcDecoder { VTDecompressionSessionInvalidate(decoder) }
+        hevcDecoder = nil
+        hevcFormat = nil
         pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
         diagnostic = deviceSession == nil ? "Cámara detenida" : "Video Meta detenido · sesión de gafas conservada"
         // No borrar lastAttemptStage, lastAttemptResult ni attemptEvents.
