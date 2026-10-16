@@ -189,6 +189,9 @@ struct ShopperSessionView: View {
                 .font(.caption2.monospaced())
                 .textSelection(.enabled)
             Text("Gafas detectadas por SDK: \(session.metaWearables.detectedGlasses)")
+            Text("Estado real DeviceSession: \(session.metaWearables.sdkSessionState)")
+            Text("Estado real CameraStream: \(session.metaWearables.sdkStreamState)")
+            Text("Último error SDK: \(session.metaWearables.lastSDKError)")
                 .font(.caption2.monospacedDigit())
             if session.metaWearables.detectedGlasses == 0 {
                 Text("Meta todavía no informa gafas disponibles para esta aplicación.")
