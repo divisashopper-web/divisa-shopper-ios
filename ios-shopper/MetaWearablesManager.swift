@@ -417,6 +417,7 @@ final class MetaWearablesManager: ObservableObject {
                 // No dejar activa una cámara sin frames mientras el
                 // coordinador intenta reconstruir DeviceSession.
                 stopCameraStream()
+                pipelineStage = "Fallo de imagen Meta tras 20 s"
                 diagnostic = "CameraStream reiniciado, pero Meta no entregó imagen válida en 20 s"
                 status = "Ray-Ban sin imagen tras reiniciar cámara"
             }
@@ -478,6 +479,7 @@ final class MetaWearablesManager: ObservableObject {
             // DeviceSession, liberar todo el intento incompleto. No dejar
             // una sesión parcialmente iniciada para la próxima conexión.
             stopRayBanPreview()
+            pipelineStage = "Fallo al iniciar cámara Meta"
             diagnostic = failure
             status = failure
         }
