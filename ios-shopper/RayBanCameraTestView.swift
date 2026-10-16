@@ -53,6 +53,8 @@ struct RayBanCameraTestView: View {
                     Text("Registro Meta: \(manager.registrationStatus)")
                     Text("Gafas registradas: \(manager.detectedGlasses)")
                     Text("Gafas activas elegibles: \(manager.activeGlassesAvailable ? "Sí" : "No")")
+                    Text("Compatibilidad Meta: \(manager.deviceCompatibilitySummary)")
+                    Text("Actualización de gafas requerida: \(manager.firmwareUpdateRequired ? "Sí" : "No")")
                     Text("DeviceSession: \(manager.sdkSessionState)")
                     Text("CameraStream: \(manager.sdkStreamState)")
                     Text("Frames recibidos: \(manager.receivedFrameCount)")
