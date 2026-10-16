@@ -11,6 +11,17 @@ final class MetaWearablesManager: ObservableObject {
     @Published private(set) var registrationStatus = "Sin consultar"
     @Published private(set) var detectedGlasses = 0
     @Published private(set) var activeGlassesAvailable = false
+    @Published private(set) var attemptNumber = 0
+    @Published private(set) var lastAttemptResult = "Sin pruebas"
+    @Published private(set) var lastAttemptStage = "Sin iniciar"
+    @Published private(set) var attemptEvents: [String] = []
+
+    private func trace(_ message: String) {
+        let timestamp = Date().formatted(date: .omitted, time: .standard)
+        attemptEvents.append("\(timestamp) · \(message)")
+        if attemptEvents.count > 24 { attemptEvents.removeFirst(attemptEvents.count - 24) }
+        lastAttemptStage = message
+    }
     @Published private(set) var previewImage: UIImage?
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
@@ -152,6 +163,7 @@ final class MetaWearablesManager: ObservableObject {
     /// Etapa 1 CameraAccess: prepara una DeviceSession y espera confirmación
     /// de Meta. No publica LiveKit, no graba y no toca la cámara del iPhone.
     private func startDeviceSession(generation: UInt) async throws -> DeviceSession? {
+        trace("Creando DeviceSession con AutoDeviceSelector; elegible: \(activeGlassesAvailable)")
         pipelineStage = "1/5 · Creando DeviceSession Meta"
         diagnostic = "Iniciando sesión oficial CameraAccess…"
         guard !Task.isCancelled, streamGeneration == generation else { return nil }
@@ -164,6 +176,8 @@ final class MetaWearablesManager: ObservableObject {
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
                 self.lastSDKError = String(describing: error)
+                self.trace("Error DeviceSession: \(error)")
+                self.lastAttemptResult = "Falló DeviceSession: \(error)"
                 self.diagnostic = "Error de DeviceSession Meta: \(error.localizedDescription)"
                 self.status = self.diagnostic
             }
@@ -179,6 +193,8 @@ final class MetaWearablesManager: ObservableObject {
             if streamGeneration == generation {
                 deviceSession = nil
             }
+            trace("session.start() falló: \(error)")
+            lastAttemptResult = "Falló inicio Meta: \(error)"
             throw error
         }
 
@@ -189,6 +205,8 @@ final class MetaWearablesManager: ObservableObject {
             try? await Task.sleep(for: .seconds(30))
             guard !Task.isCancelled, let self,
                   self.streamGeneration == generation else { return }
+            self.trace("DeviceSession agotó espera de 30 s")
+            self.lastAttemptResult = "Tiempo agotado esperando DeviceSession"
             self.diagnostic = "Meta no inició DeviceSession en 30 s · revisa conexión y autorización"
             self.status = "Tiempo de espera agotado al conectar Ray-Ban"
             session.stop()
@@ -206,6 +224,7 @@ final class MetaWearablesManager: ObservableObject {
                 return nil
             }
             sdkSessionState = String(describing: state)
+            trace("DeviceSession: \(state)")
             // No ocultar la causa original cuando el watchdog detiene
             // la sesión y el SDK publica posteriormente el estado .stopped.
             if status != "Tiempo de espera agotado al conectar Ray-Ban" {
@@ -507,6 +526,10 @@ final class MetaWearablesManager: ObservableObject {
         // stopCameraStream() incrementa streamGeneration; capturarla antes
         // invalidaba inmediatamente el intento y bloqueaba DeviceSession.
         stopCameraStream()
+        attemptNumber += 1
+        attemptEvents = []
+        lastAttemptResult = "Intento #\(attemptNumber) en curso"
+        trace("Inicio de prueba independiente #\(attemptNumber)")
         let generation = streamGeneration
         hasReceivedFrame = false
         previewImage = nil
@@ -534,7 +557,11 @@ final class MetaWearablesManager: ObservableObject {
         status = "Conectando Ray-Ban…"
 
         do {
-            guard let session = try await startDeviceSession(generation: generation) else { return }
+            guard let session = try await startDeviceSession(generation: generation) else {
+                if lastAttemptResult.contains("en curso") { lastAttemptResult = "DeviceSession no inició" }
+                trace("No se abrió CameraStream: DeviceSession no disponible")
+                return
+            }
             // Una segunda solicitud o un cierre puede invalidar esta operación
             // mientras el SDK espera autorización o conexión de las gafas.
             guard !Task.isCancelled, streamGeneration == generation else { return }
@@ -552,13 +579,17 @@ final class MetaWearablesManager: ObservableObject {
                 diagnostic = "DeviceSession dejó de estar iniciada durante la autorización Meta"
                 return
             }
+            trace("DeviceSession iniciada; permiso confirmado; abriendo CameraStream")
             try startCameraStream(session: session, generation: generation)
+            lastAttemptResult = "CameraStream solicitado; esperando imagen"
         } catch {
             // Un intento antiguo no debe reemplazar el diagnóstico de una
             // conexión más reciente ni el estado de una sesión ya cerrada.
             guard !Task.isCancelled, streamGeneration == generation else { return }
             let failure = "Error de inicio Meta: \(error.localizedDescription)"
             lastSDKError = String(describing: error)
+            trace("Error de inicio: \(error)")
+            lastAttemptResult = "Falló: \(error)"
             // Si addCamera/startCameraStream falla después de crear la
             // DeviceSession, liberar todo el intento incompleto. No dejar
             // una sesión parcialmente iniciada para la próxima conexión.
@@ -629,6 +660,7 @@ final class MetaWearablesManager: ObservableObject {
         firstFrameTime = nil
         pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
         diagnostic = deviceSession == nil ? "Cámara detenida" : "Video Meta detenido · sesión de gafas conservada"
+        // No borrar lastAttemptStage, lastAttemptResult ni attemptEvents.
     }
 
     /// Cierre completo del motor Meta: video + DeviceSession.
