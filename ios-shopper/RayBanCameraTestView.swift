@@ -60,6 +60,13 @@ struct RayBanCameraTestView: View {
                     Text("Etapa: \(manager.pipelineStage)")
                     Text("Error Meta: \(manager.lastSDKError)")
                     Text("Diagnóstico: \(manager.diagnostic)")
+                    Divider()
+                    Text("Último intento #\(manager.attemptNumber): \(manager.lastAttemptResult)")
+                    Text("Última etapa: \(manager.lastAttemptStage)")
+                    Text("Historial de conexión (no se borra al detener):")
+                    ForEach(Array(manager.attemptEvents.enumerated()), id: \.offset) { _, event in
+                        Text(event)
+                    }
                 }
                 .font(.footnote.monospaced())
                 .textSelection(.enabled)
