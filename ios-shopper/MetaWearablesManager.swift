@@ -10,6 +10,7 @@ import VideoToolbox
 final class MetaWearablesManager: ObservableObject {
     @Published private(set) var registrationStatus = "Sin consultar"
     @Published private(set) var detectedGlasses = 0
+    @Published private(set) var activeGlassesAvailable = false
     @Published private(set) var previewImage: UIImage?
     @Published private(set) var status = "Ray-Ban sin conectar"
     @Published private(set) var isStreaming = false
@@ -31,6 +32,9 @@ final class MetaWearablesManager: ObservableObject {
     // No inicializar el SDK de Meta al abrir la app. Acceder solo cuando
     // el usuario solicita registrar o conectar las gafas.
     private var wearables: any WearablesInterface { Wearables.shared }
+    private lazy var deviceSelector = AutoDeviceSelector(wearables: wearables)
+    private var activeDeviceMonitor: Task<Void, Never>?
+    private let sessionErrorTokens = ListenerTokenBag()
     private var deviceSession: DeviceSession?
     private var camera: Camera?
     private var stream: MWDATCamera.Stream?
@@ -55,6 +59,15 @@ final class MetaWearablesManager: ObservableObject {
                 self.registrationStatus = String(describing: state)
             }
         }
+        activeDeviceMonitor = Task { [weak self] in
+            guard let self else { return }
+            for await activeId in self.deviceSelector.activeDeviceStream() {
+                self.activeGlassesAvailable = activeId != nil
+                if activeId == nil && self.detectedGlasses > 0 {
+                    self.diagnostic = "Meta registra gafas, pero AutoDeviceSelector no encuentra un dispositivo activo elegible"
+                }
+            }
+        }
         deviceMonitor = Task { [weak self] in
             guard let self else { return }
             for await devices in self.wearables.devicesStream() {
@@ -66,6 +79,7 @@ final class MetaWearablesManager: ObservableObject {
     deinit {
         registrationMonitor?.cancel()
         deviceMonitor?.cancel()
+        activeDeviceMonitor?.cancel()
     }
 
     // Salidas puras del motor Meta. Este tipo no conoce LiveKit ni AVAssetWriter.
@@ -142,10 +156,18 @@ final class MetaWearablesManager: ObservableObject {
         diagnostic = "Iniciando sesión oficial CameraAccess…"
         guard !Task.isCancelled, streamGeneration == generation else { return nil }
         pipelineStage = "2/5 · Creando DeviceSession"
-        let selector = AutoDeviceSelector(wearables: wearables)
-        let session = try wearables.createSession(deviceSelector: selector)
+        let session = try wearables.createSession(deviceSelector: deviceSelector)
         deviceSession = session
 
+        sessionErrorTokens.clear()
+        session.errorPublisher.listen { [weak self] error in
+            Task { @MainActor in
+                guard let self, self.streamGeneration == generation else { return }
+                self.lastSDKError = String(describing: error)
+                self.diagnostic = "Error de DeviceSession Meta: \(error.localizedDescription)"
+                self.status = self.diagnostic
+            }
+        }.store(in: sessionErrorTokens)
         let stateStream = session.stateStream()
         sdkSessionState = "Iniciando"
         diagnostic = "Iniciando sesión de gafas…"
