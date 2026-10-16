@@ -58,6 +58,8 @@ final class MetaWearablesManager: ObservableObject {
     private var hevcDecoder: VTDecompressionSession?
     private var hevcFormat: CMFormatDescription?
     private var lastPreviewDecodeAt: Date?
+    // Mantener decodificación secuencial fuera del actor principal.
+    private let previewDecoder = MetaPreviewDecodeWorker()
     private var firstFrameTime: CMTime?
     private var sessionStateTask: Task<Void, Never>?
     private var frameWatchdogTask: Task<Void, Never>?
@@ -353,11 +355,29 @@ final class MetaWearablesManager: ObservableObject {
                 // La decodificación HEVC síncrona bloquea el hilo principal si
                 // intentamos hacerla 24 veces por segundo. Para la prueba local,
                 // limitar el preview a ~8 fps y conservar el conteo real de frames.
-                let now = Date()
-                let shouldRender = self.lastPreviewDecodeAt.map { now.timeIntervalSince($0) >= 0.125 } ?? true
-                guard shouldRender else { return }
-                self.lastPreviewDecodeAt = now
-                let decodedImage = frame.makeUIImage() ?? self.decodeHEVCPreview(frame.sampleBuffer)
+                // El worker procesa todos los frames HEVC en orden; solo la
+                // publicación SwiftUI se limita para evitar saturar el iPhone.
+                self.previewDecoder.submit(frame.sampleBuffer, generation: generation) { [weak self] decodedImage, frameGeneration in
+                    Task { @MainActor [weak self] in
+                        guard let self, self.streamGeneration == frameGeneration else { return }
+                        let now = Date()
+                        guard self.lastPreviewDecodeAt.map({ now.timeIntervalSince($0) >= 0.125 }) ?? true else { return }
+                        self.lastPreviewDecodeAt = now
+                        if let decodedImage {
+                            self.previewImage = decodedImage
+                            self.hasReceivedFrame = true
+                            self.lastFrameReceivedAt = now
+                            self.previewImageCount += 1
+                            self.diagnostic = "Imagen Ray-Ban visible · HEVC decodificado: \(self.previewImageCount) · frames: \(self.receivedFrameCount)"
+                            self.pipelineStage = "5/5 · Imagen visible recibida"
+                            if self.previewImageCount == 1 {
+                                self.trace("Primer fotograma visible recibido desde Ray-Ban")
+                                self.lastAttemptResult = "Éxito: imagen real recibida de las gafas"
+                            }
+                        }
+                    }
+                }
+                let decodedImage: UIImage? = nil
                 // La vista previa y el grabador deben basarse en la misma
                 // muestra válida; una UIImage aislada no confirma que exista
                 // un sampleBuffer listo para guardar.
@@ -716,6 +736,7 @@ final class MetaWearablesManager: ObservableObject {
         if let decoder = hevcDecoder { VTDecompressionSessionInvalidate(decoder) }
         hevcDecoder = nil
         hevcFormat = nil
+        previewDecoder.reset()
         pipelineStage = deviceSession == nil ? "Meta inactivo" : "3/5 · DeviceSession iniciada"
         diagnostic = deviceSession == nil ? "Cámara detenida" : "Video Meta detenido · sesión de gafas conservada"
         // No borrar lastAttemptStage, lastAttemptResult ni attemptEvents.
@@ -737,5 +758,63 @@ final class MetaWearablesManager: ObservableObject {
         status = "Ray-Ban sin conectar"
         pipelineStage = "Meta inactivo"
         diagnostic = "Cámara detenida"
+    }
+}
+
+
+// Trabajador serial independiente del hilo principal. La cola mantiene el
+// orden HEVC y el reset ocurre en la misma cola, después de los frames previos.
+private final class MetaPreviewDecodeWorker: @unchecked Sendable {
+    private struct BufferBox: @unchecked Sendable { let sample: CMSampleBuffer }
+    private let queue = DispatchQueue(label: "com.divisashopper.meta.preview.decode", qos: .userInitiated)
+    private var session: VTDecompressionSession?
+    private var format: CMFormatDescription?
+    private let context = CIContext()
+
+    func submit(_ sample: CMSampleBuffer, generation: UInt, completion: @escaping @Sendable (UIImage?, UInt) -> Void) {
+        let boxed = BufferBox(sample: sample)
+        queue.async { [self] in
+            let image = decode(boxed.sample)
+            completion(image, generation)
+        }
+    }
+
+    func reset() {
+        queue.async { [self] in
+            if let session { VTDecompressionSessionInvalidate(session) }
+            session = nil
+            format = nil
+        }
+    }
+
+    private func decode(_ sample: CMSampleBuffer) -> UIImage? {
+        guard CMSampleBufferGetDataBuffer(sample) != nil,
+              let currentFormat = CMSampleBufferGetFormatDescription(sample) else { return nil }
+        if let format, !CMFormatDescriptionEqual(format, otherFormatDescription: currentFormat) {
+            if let session { VTDecompressionSessionInvalidate(session) }
+            session = nil
+            self.format = nil
+        }
+        if session == nil {
+            var created: VTDecompressionSession?
+            let attrs: [CFString: Any] = [kCVPixelBufferPixelFormatTypeKey: kCVPixelFormatType_32BGRA]
+            let result = VTDecompressionSessionCreate(allocator: kCFAllocatorDefault,
+                formatDescription: currentFormat, decoderSpecification: nil,
+                imageBufferAttributes: attrs as CFDictionary, outputCallback: nil,
+                decompressionSessionOut: &created)
+            guard result == noErr, let created else { return nil }
+            session = created
+            format = currentFormat
+        }
+        guard let session else { return nil }
+        nonisolated(unsafe) var output: CVPixelBuffer?
+        let result = VTDecompressionSessionDecodeFrame(session, sampleBuffer: sample,
+            flags: [], infoFlagsOut: nil) { status, _, buffer, _, _ in
+                if status == noErr { output = buffer }
+            }
+        guard result == noErr, let output else { return nil }
+        let ci = CIImage(cvPixelBuffer: output)
+        guard let cg = context.createCGImage(ci, from: ci.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 }
