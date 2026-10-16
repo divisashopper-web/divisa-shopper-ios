@@ -516,6 +516,20 @@ final class MetaWearablesManager: ObservableObject {
             // Una segunda solicitud o un cierre puede invalidar esta operación
             // mientras el SDK espera autorización o conexión de las gafas.
             guard !Task.isCancelled, streamGeneration == generation else { return }
+            // Igual que CameraAccess: permiso después de DeviceSession.started.
+            pipelineStage = "3/5 · Permiso de cámara Meta"
+            if try await wearables.checkPermissionStatus(.camera) != .granted {
+                diagnostic = "Solicitando autorización de cámara en Meta AI"
+                guard try await wearables.requestPermission(.camera) == .granted else {
+                    status = "Permiso de cámara Meta no concedido"
+                    return
+                }
+            }
+            guard !Task.isCancelled, streamGeneration == generation,
+                  session.state == .started else {
+                diagnostic = "DeviceSession dejó de estar iniciada durante la autorización Meta"
+                return
+            }
             try startCameraStream(session: session, generation: generation)
         } catch {
             // Un intento antiguo no debe reemplazar el diagnóstico de una
