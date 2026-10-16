@@ -12,7 +12,15 @@ struct ShopperSessionView: View {
                 activeCameraBadge
                 sessionSafetySummary
                 shopperCameraStage
-                rayBanLocalPreviewTest
+                NavigationLink {
+                    RayBanCameraTestView(manager: session.metaWearables)
+                } label: {
+                    Label("Abrir cámara Ray-Ban · prueba independiente", systemImage: "eyeglasses")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(12)
+                }
+                .buttonStyle(.borderedProminent)
                 clientStage
                 Text("Video del cliente")
                     .font(.caption.weight(.semibold))
