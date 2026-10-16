@@ -334,7 +334,6 @@ final class MetaWearablesManager: ObservableObject {
 
         stream.videoFramePublisher.listen { [weak self] frame in
             let pixelBuffer = CMSampleBufferGetImageBuffer(frame.sampleBuffer)
-            let image = frame.makeUIImage()
             Task { @MainActor in
                 guard let self, self.streamGeneration == generation else { return }
                 self.frameCount += 1
@@ -358,7 +357,7 @@ final class MetaWearablesManager: ObservableObject {
                 let shouldRender = self.lastPreviewDecodeAt.map { now.timeIntervalSince($0) >= 0.125 } ?? true
                 guard shouldRender else { return }
                 self.lastPreviewDecodeAt = now
-                let decodedImage = image ?? self.decodeHEVCPreview(frame.sampleBuffer)
+                let decodedImage = frame.makeUIImage() ?? self.decodeHEVCPreview(frame.sampleBuffer)
                 // La vista previa y el grabador deben basarse en la misma
                 // muestra válida; una UIImage aislada no confirma que exista
                 // un sampleBuffer listo para guardar.
@@ -409,11 +408,11 @@ final class MetaWearablesManager: ObservableObject {
                 if wasStreaming && !streaming {
                     // El SDK dejó de transmitir: cerrar el segmento activo
                     // antes de intentar recuperar la cámara.
-                    self.onStreamingChanged?(false)
+                    if !self.standaloneCameraTest { self.onStreamingChanged?(false) }
                 }
                 if streaming {
                     if !wasStreaming {
-                        self.onStreamingChanged?(true)
+                        if !self.standaloneCameraTest { self.onStreamingChanged?(true) }
                     }
                     self.status = "Ray-Ban transmitiendo"
                     if !self.hasReceivedFrame {
