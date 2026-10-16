@@ -445,12 +445,12 @@ final class MetaWearablesManager: ObservableObject {
                 diagnostic = "Meta solicita permiso de cámara; regresa a DIVISA SHOPPER después de autorizar"
                 guard try await wearables.requestPermission(.camera) == .granted else {
                     status = "Permiso de cámara Meta no concedido"
-                    return
+                    return false
                 }
             }
             guard !Task.isCancelled, streamGeneration == generation, session.state == .started else {
                 diagnostic = "La sesión Meta ya no está iniciada después de solicitar permiso"
-                return
+                return false
             }
             try startCameraStream(session: session, generation: generation)
             let recovered = await waitUntilFirstFrame(timeoutSeconds: 20)
